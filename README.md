@@ -2,6 +2,34 @@
 
 A real-time global environmental hazards monitoring and visualization platform built with React + TypeScript.
 
+### Tech Stack
+
+**Frontend:**
+- **React** ^19.1.1 - UI library
+- **TypeScript** ~5.9.3 - Type-safe JavaScript
+- **Vite** ^7.1.7 - Fast build tool and dev server
+- **Mapbox GL** ^3.15.0 - Interactive map visualization
+- **React DOM** ^19.1.1 - React rendering engine
+
+**Build & Development Tools:**
+- **Node.js** 18.x (supports 20.x, 22.x)
+- **ESLint** ^9.36.0 - Code linting
+  - @eslint/js ^9.36.0
+  - typescript-eslint ^8.45.0
+  - eslint-plugin-react-hooks ^5.2.0
+  - eslint-plugin-react-refresh ^0.4.22
+- **TypeScript ESLint** ^8.45.0 - TypeScript linting
+
+**Backend/Server:**
+- **Express** ^5.1.0 - Node.js web framework
+- **Node Fetch** ^3.3.2 - Fetch API for Node.js
+- **Serve** ^14.2.0 - Static file server
+
+**Type Definitions:**
+- @types/react ^19.1.16
+- @types/react-dom ^19.1.9
+- @types/node ^24.6.0
+
 ### Project Structure
 
 ```

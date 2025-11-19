@@ -1,99 +1,137 @@
-## Prometheus Global Guardian
+# **Prometheus Global Guardian** 🌍
 
-A real-time global environmental hazards monitoring and visualization platform built with React + TypeScript.
+一个**实时全球环境灾害监控与可视化平台**，使用 React + TypeScript 构建。
 
-### Tech Stack
+## **核心功能**
 
-**Frontend:**
-- **React** ^19.1.1 - UI library
-- **TypeScript** ~5.9.3 - Type-safe JavaScript
-- **Vite** ^7.1.7 - Fast build tool and dev server
-- **Mapbox GL** ^3.15.0 - Interactive map visualization
-- **React DOM** ^19.1.1 - React rendering engine
+🔍 **实时灾害监控**
+- 整合多个数据源（USGS地震数据、NASA EONET事件、GDACS全球灾害预警系统）
+- 实时聚合全球环境灾害数据
 
-**Build & Development Tools:**
-- **Node.js** 18.x (supports 20.x, 22.x)
-- **ESLint** ^9.36.0 - Code linting
+🗺️ **交互式地图可视化**
+- 基于 Mapbox GL 的3D地球可视化
+- 灾害点位标记和详细信息展示
+
+📊 **数据分析与过滤**
+- 按灾害类型筛选（地震、火山、风暴、洪水等）
+- 实时统计数据展示
+
+📄 **报告导出**
+- 一键导出灾害报告（HTML格式）
+- 便于保存和分享
+
+⚙️ **现代化交互**
+- 设置面板模态框
+- ESC键和点击遮罩层关闭功能
+- 响应式设计
+
+---
+
+## **技术栈**
+
+**前端框架:**
+- **React** ^19.1.1 - UI 库
+- **TypeScript** ~5.9.3 - 类型安全的 JavaScript
+- **Vite** ^7.1.7 - 快速构建工具和开发服务器
+- **Mapbox GL** ^3.15.0 - 交互式地图可视化引擎
+- **React DOM** ^19.1.1 - React 渲染引擎
+
+**构建与开发工具:**
+- **Node.js** 18.x (支持 20.x, 22.x)
+- **ESLint** ^9.36.0 - 代码检查工具
   - @eslint/js ^9.36.0
   - typescript-eslint ^8.45.0
   - eslint-plugin-react-hooks ^5.2.0
   - eslint-plugin-react-refresh ^0.4.22
-- **TypeScript ESLint** ^8.45.0 - TypeScript linting
+- **TypeScript ESLint** ^8.45.0 - TypeScript 代码检查
 
-**Backend/Server:**
-- **Express** ^5.1.0 - Node.js web framework
-- **Node Fetch** ^3.3.2 - Fetch API for Node.js
-- **Serve** ^14.2.0 - Static file server
+**后端服务:**
+- **Express** ^5.1.0 - Node.js Web 框架
+- **Node Fetch** ^3.3.2 - Node.js 的 Fetch API
+- **Serve** ^14.2.0 - 静态文件服务器
 
-**Type Definitions:**
+**类型定义:**
 - @types/react ^19.1.16
 - @types/react-dom ^19.1.9
 - @types/node ^24.6.0
 
-### Project Structure
+## **项目结构**
 
 ```
 prometheus-global-guardian/
 ├── public/
-│   └── assets/              # Static assets (logo, etc.)
+│   └── assets/              # 静态资源（logo 等）
 │       ├── prometheus-logo.jpeg
 │       └── prometheus-logo.png
 ├── src/
-│   ├── index.tsx            # App entry point
-│   ├── index.css            # Global styles
-│   ├── App.tsx              # Main app component
-│   └── components/          # Feature components
-│       ├── Header.tsx
-│       ├── StatusPanel.tsx
-│       ├── LegendPanel.tsx
-│       ├── MapView.tsx
-│       ├── SaveReportModal.tsx
-│       ├── SettingsModal.tsx
-│   └── types/
+│   ├── index.tsx            # 应用入口
+│   ├── index.css            # 全局样式
+│   ├── App.tsx              # 主应用组件
+│   ├── components/          # 功能组件
+│   │   ├── Header.tsx
+│   │   ├── StatusPanel.tsx
+│   │   ├── LegendPanel.tsx
+│   │   ├── MapView.tsx
+│   │   ├── SaveReportModal.tsx
+│   │   └── SettingsModal.tsx
+│   ├── api/                 # API 接口
+│   │   ├── auth.ts
+│   │   └── disasteraware.ts
+│   ├── config/              # 配置文件
+│   │   ├── displayedTypes.ts
+│   │   ├── hazardColors.ts
+│   │   └── index.ts
+│   └── types/               # 类型定义
 │       └── index.ts
+├── server.js                # Express 服务器
 ├── package.json
 ├── tsconfig.json
 ├── tsconfig.app.json
 ├── tsconfig.node.json
 ├── vite.config.ts
 ├── eslint.config.js
+├── Dockerfile
 └── README.md
 ```
 
-### Getting Started
+## **快速开始**
 
-
-1. Install dependencies (skip if already done):
-	```bash
-	npm install
-	```
-
-2. Start the development server (Vite):
-	```bash
-	npm run dev
-	```
-
-3. Open your browser and visit http://localhost:5173 (or the port shown in the terminal)
+### 1. 安装依赖（如已完成可跳过）
+```bash
+npm install
 ```
-4. Build and preview for production:
-	```bash
-	npm run build
-	npm run preview
-	```
 
-5. If you need to manually install map dependencies:
-	```bash
-	npm install mapbox-gl @types/mapbox-gl --save
-	```
+### 2. 启动开发服务器（Vite）
+```bash
+npm run dev
+```
 
-### Main Features
+### 3. 打开浏览器访问
+访问 http://localhost:5173（或终端显示的端口）
 
-- Real-time aggregation of environmental hazard data from multiple sources (USGS, NASA EONET, GDACS)
-- Mapbox globe visualization and hazard markers
-- Hazard type filtering and statistics
-- One-click export of hazard reports (HTML)
-- Settings modal, ESC/overlay click to close, and modern UI interactions
+### 4. 生产环境构建与预览
+```bash
+npm run build
+npm run preview
+```
 
-### Notes
+### 5. 手动安装地图依赖（如需要）
+```bash
+npm install mapbox-gl @types/mapbox-gl --save
+```
 
-- All page structure, interactions, and styles have been migrated to React components
+## **项目亮点**
+
+- ✅ 多数据源实时聚合（USGS、NASA EONET、GDACS）
+- ✅ Mapbox 3D地球可视化和灾害标记
+- ✅ 灾害类型过滤和统计分析
+- ✅ 一键导出灾害报告（HTML格式）
+- ✅ 现代化UI交互体验
+- ✅ 完全组件化的 React 架构设计
+
+## **说明**
+
+- 采用完全组件化的 React 架构设计
+- 支持多种 Node.js 版本（18.x、20.x、22.x）
+- 使用 TypeScript 确保类型安全
+- 配备完整的 ESLint 代码规范

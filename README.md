@@ -131,7 +131,26 @@ prometheus-global-guardian/
 ### **环境要求**
 - Node.js 18.x 或更高版本（推荐 20.x）
 - npm 或 yarn 包管理器
-- Mapbox Access Token（可选，用于地图功能）
+- Mapbox Access Token（必需，用于地图功能）
+
+### **环境配置**
+
+**重要：获取 Mapbox Token**
+
+1. 访问 [Mapbox 官网](https://account.mapbox.com/access-tokens/)
+2. 注册或登录账户（免费）
+3. 创建新的 Access Token
+4. 复制 token 并配置到项目中
+
+**配置步骤：**
+
+```bash
+# 1. 复制环境变量模板
+cp .env.example .env
+
+# 2. 编辑 .env 文件，添加你的 Mapbox token
+# VITE_MAPBOX_TOKEN=pk.your_actual_mapbox_token_here
+```
 
 ### **安装与运行**
 
@@ -143,12 +162,17 @@ cd prometheus-global-guardian
 # 2. 安装依赖
 npm install
 
-# 3. 启动开发服务器
+# 3. 配置环境变量（见上方"环境配置"）
+# 编辑 .env 文件添加 Mapbox token
+
+# 4. 启动开发服务器
 npm run dev
 
-# 4. 浏览器访问
+# 5. 浏览器访问
 # 打开 http://localhost:5173
 ```
+
+> ⚠️ **注意**: 如果不配置有效的 Mapbox token，地图将无法正常显示
 
 ### **生产环境部署**
 

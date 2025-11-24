@@ -3,11 +3,13 @@ import React from "react";
 interface HeaderProps {
   onOpenSaveModal: () => void;
   onOpenSettingsModal: () => void;
+  onOpenAnalytics: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
   onOpenSaveModal,
-  onOpenSettingsModal
+  onOpenSettingsModal,
+  onOpenAnalytics
 }) => {
   return (
     <header className="header">
@@ -25,6 +27,27 @@ const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="header-buttons">
+          <button
+            className="btn btn-analytics"
+            aria-label="Open Analytics Dashboard"
+            onClick={onOpenAnalytics}
+          >
+            <svg
+              className="icon"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              />
+            </svg>
+            <span>Analytics</span>
+          </button>
+          
           <button
             className="btn btn-primary"
             aria-label="Open Save Report Modal"

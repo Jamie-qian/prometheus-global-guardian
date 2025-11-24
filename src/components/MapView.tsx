@@ -15,6 +15,7 @@ const MapView: React.FC<MapViewProps> = ({
   const map = useRef<mapboxgl.Map | null>(null);
   const [disasters, setDisasters] = useState<Hazard[]>([]);
   const markers = useRef<mapboxgl.Marker[]>([]);
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   useEffect(() => {
     if (map.current) return;
@@ -36,6 +37,7 @@ const MapView: React.FC<MapViewProps> = ({
         "star-intensity": 0.6
       });
       fetchDisasters();
+      initializeHeatmapLayer();
     });
 
     return () => {
@@ -214,7 +216,7 @@ const MapView: React.FC<MapViewProps> = ({
           description,
           geometry,
           source: 'GDACS',
-          link: properties.url?.report || null
+          url: properties.url?.report || undefined
         });
       });
 
@@ -252,6 +254,122 @@ const MapView: React.FC<MapViewProps> = ({
     if (t.includes("storm")) return "STORM";
     return "UNKNOWN";
   };
+  const initializeHeatmapLayer = () => {
+    if (!map.current) return;
+    
+    // Add heatmap source
+    map.current.addSource('hazards-heat', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: []
+      }
+    });
+
+    // Add heatmap layer
+    map.current.addLayer({
+      id: 'hazards-heatmap',
+      type: 'heatmap',
+      source: 'hazards-heat',
+      maxzoom: 15,
+      paint: {
+        // Increase the heatmap weight based on severity
+        'heatmap-weight': [
+          'interpolate',
+          ['linear'],
+          ['get', 'magnitude'],
+          0, 0,
+          6, 1
+        ],
+        // Increase the heatmap color intensity by zoom level
+        'heatmap-intensity': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          0, 1,
+          15, 3
+        ],
+        // Color ramp for heatmap
+        'heatmap-color': [
+          'interpolate',
+          ['linear'],
+          ['heatmap-density'],
+          0, 'rgba(33,102,172,0)',
+          0.2, 'rgb(103,169,207)',
+          0.4, 'rgb(209,229,240)',
+          0.6, 'rgb(253,219,199)',
+          0.8, 'rgb(239,138,98)',
+          1, 'rgb(178,24,43)'
+        ],
+        // Adjust the heatmap radius by zoom level
+        'heatmap-radius': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          0, 2,
+          15, 20
+        ],
+        // Transition from heatmap to circle layer by zoom level
+        'heatmap-opacity': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          7, 1,
+          15, 0
+        ]
+      }
+    }, 'waterway-label');
+
+    map.current.setLayoutProperty('hazards-heatmap', 'visibility', 'none');
+  };
+
+  const updateHeatmapData = (hazards: Hazard[]) => {
+    if (!map.current || !map.current.getSource('hazards-heat')) return;
+
+    const features = hazards
+      .filter(h => h.geometry?.coordinates)
+      .map(h => ({
+        type: 'Feature' as const,
+        properties: {
+          magnitude: h.magnitude || 3,
+          type: h.type
+        },
+        geometry: {
+          type: 'Point' as const,
+          coordinates: h.geometry.coordinates
+        }
+      }));
+
+    const source = map.current.getSource('hazards-heat') as mapboxgl.GeoJSONSource;
+    source.setData({
+      type: 'FeatureCollection',
+      features
+    });
+  };
+
+  const toggleHeatmap = () => {
+    if (!map.current) return;
+    const newVisibility = !showHeatmap;
+    setShowHeatmap(newVisibility);
+    
+    map.current.setLayoutProperty(
+      'hazards-heatmap',
+      'visibility',
+      newVisibility ? 'visible' : 'none'
+    );
+
+    // Toggle markers visibility
+    markers.current.forEach(marker => {
+      const el = marker.getElement();
+      el.style.display = newVisibility ? 'none' : 'block';
+    });
+  };
+
+  useEffect(() => {
+    if (map.current && disasters.length > 0) {
+      updateHeatmapData(disasters);
+    }
+  }, [disasters]);
 
   const addMarkersToMap = (hazards: any[]) => {
     markers.current.forEach(m => m.remove());
@@ -267,6 +385,7 @@ const MapView: React.FC<MapViewProps> = ({
       el.style.borderRadius = "50%";
       el.style.backgroundColor = color;
       el.style.border = "2px solid white";
+      el.style.display = showHeatmap ? 'none' : 'block';
       const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
         <div class="popup-title">${h.title}</div>
         <div class="popup-info">
@@ -284,6 +403,24 @@ const MapView: React.FC<MapViewProps> = ({
     });
   };
 
+  return (
+    <>
+      <div ref={mapContainer} style={{ width: "100vw", height: "100vh" }} />
+      <div className="heatmap-toggle">
+        <button
+          onClick={toggleHeatmap}
+          className={`toggle-button ${showHeatmap ? 'active' : ''}`}
+          title={showHeatmap ? 'Show Markers' : 'Show Heatmap'}
+        >
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+          </svg>
+          <span>{showHeatmap ? 'Markers' : 'Heatmap'}</span>
+        </button>
+      </div>
+    </>
+  );
   return <div ref={mapContainer} style={{ width: "100vw", height: "100vh" }} />;
 };
 

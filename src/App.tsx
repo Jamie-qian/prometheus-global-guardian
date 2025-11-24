@@ -6,11 +6,13 @@ import LegendPanel from "./components/LegendPanel";
 import MapView from "./components/MapView";
 import SaveReportModal from "./components/SaveReportModal";
 import SettingsModal from "./components/SettingsModal";
+import AnalyticsPage from "./components/AnalyticsPage";
 import type { Hazard, SaveReportPayload } from "./types";
 
 const App: React.FC = () => {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [selectedStyle, setSelectedStyle] = useState("dark-v11");
   const [disasters, setDisasters] = useState<Hazard[]>([]);
   const [filter, setFilter] = useState("ALL");
@@ -58,19 +60,30 @@ const App: React.FC = () => {
       <Header
         onOpenSaveModal={() => setIsSaveModalOpen(true)}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+        onOpenAnalytics={() => setIsAnalyticsOpen(true)}
       />
       <main>
-        <MapView
-          mapStyle={selectedStyle}
-          onDataUpdate={handleDisastersUpdate}
-          filter={filter}
-        />
-        <StatusPanel
-          filter={filter}
-          onFilterChange={newFilter => setFilter(newFilter)}
-          onRefresh={() => window.location.reload()}
-        />
-        <LegendPanel />
+        {isAnalyticsOpen ? (
+          <AnalyticsPage 
+            hazards={disasters} 
+            onClose={() => setIsAnalyticsOpen(false)}
+          />
+        ) : (
+          <>
+            <MapView
+              mapStyle={selectedStyle}
+              onDataUpdate={handleDisastersUpdate}
+              filter={filter}
+            />
+            <StatusPanel
+              filter={filter}
+              onFilterChange={newFilter => setFilter(newFilter)}
+              onRefresh={() => window.location.reload()}
+              totalCount={disasters.length}
+            />
+            <LegendPanel />
+          </>
+        )}
 
         <SaveReportModal
           isOpen={isSaveModalOpen}

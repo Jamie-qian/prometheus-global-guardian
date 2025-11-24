@@ -7,12 +7,14 @@ interface StatusPanelProps {
   filter: string;
   onFilterChange: (value: string) => void;
   onRefresh: () => void;
+  totalCount?: number;
 }
 
 const StatusPanel: React.FC<StatusPanelProps> = ({
   filter,
   onFilterChange,
-  onRefresh
+  onRefresh,
+  totalCount = 0
 }) => {
   const [hazardTypes, setHazardTypes] = useState<HazardType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,6 +60,11 @@ const StatusPanel: React.FC<StatusPanelProps> = ({
       </div>
 
       <p className="status-text">Real-time environmental hazards</p>
+
+      <div className="total-count">
+        <div className="count-label">Total Hazards</div>
+        <div className="count-value">{totalCount}</div>
+      </div>
 
       <div className="filter-section">
         <label className="filter-label" htmlFor="hazard-filter">

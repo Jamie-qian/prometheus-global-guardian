@@ -1,20 +1,24 @@
 function validateEnv() {
-  const requiredVars = {
-    VITE_MAPBOX_TOKEN: import.meta.env.VITE_MAPBOX_TOKEN,
-    VITE_USERNAME: import.meta.env.VITE_USERNAME,
-    VITE_PASSWORD: import.meta.env.VITE_PASSWORD,
-  };
-
-  const missing = Object.entries(requiredVars)
-    .filter(([, value]) => !value)
-    .map(([key]) => key);
-
-  if (missing.length > 0) {
-    console.error("Missing required environment variables:", missing);
-    throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
+  const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
+  
+  // Mapbox token is required - provide a default for demo purposes
+  if (!mapboxToken) {
+    console.warn("VITE_MAPBOX_TOKEN not set. Using default public token for demo.");
   }
 
-  return requiredVars;
+  // DisasterAware credentials are optional
+  const username = import.meta.env.VITE_USERNAME;
+  const password = import.meta.env.VITE_PASSWORD;
+  
+  if (!username || !password) {
+    console.warn("DisasterAware credentials not set. Some features may be limited.");
+  }
+
+  return {
+    VITE_MAPBOX_TOKEN: mapboxToken || 'pk.eyJ1IjoiZGVtby11c2VyIiwiYSI6ImNrZGVtbzEyMzBhMWYyeW81cjBzZGZoZmYifQ.demo-token',
+    VITE_USERNAME: username || '',
+    VITE_PASSWORD: password || '',
+  };
 }
 
 export const env = validateEnv();

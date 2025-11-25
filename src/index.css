@@ -987,7 +987,7 @@ textarea.form-input {
   background: linear-gradient(135deg, #1e3a8a 0%, #312e81 50%, #1f2937 100%);
   overflow-y: auto;
   z-index: 100;
-  padding: 20px;
+  padding: 0;
   padding-top: 80px;
 }
 
@@ -1042,34 +1042,47 @@ textarea.form-input {
 .analytics-content {
   max-width: 1400px;
   margin: 0 auto;
+  padding: 0 20px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  box-sizing: border-box;
 }
 
 .analytics-content .statistics-card {
-  position: relative;
-  top: auto;
-  right: auto;
-  max-width: 100%;
-  margin: 0;
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
 }
 
 .analytics-content .insights-panel {
-  position: relative;
-  top: auto;
-  right: auto;
-  max-width: 100%;
-  margin: 0;
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  max-height: none !important;
+  box-sizing: border-box !important;
 }
 
 .analytics-content .charts-panel {
-  position: relative;
-  top: auto;
-  right: auto;
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  left: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  transform: none !important;
+  box-sizing: border-box !important;
 }
 
 @media (max-width: 768px) {

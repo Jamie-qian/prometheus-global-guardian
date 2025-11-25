@@ -479,7 +479,8 @@ npm start
 
 ## 👨‍💻 **作者**
 
-**Jamie Qian** - [@Jamie-qian](https://github.com/Jamie-qian)
+**Jamie0807** - [@Jamie0807](https://github.com/Jamie0807)
+
 
 ---
 

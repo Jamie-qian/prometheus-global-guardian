@@ -170,17 +170,22 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
 
       case 'source':
         return (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={sourceData} layout="horizontal">
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart data={sourceData} layout="vertical" margin={{ left: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis 
                 type="number" 
                 stroke="#9ca3af"
                 allowDecimals={false}
                 domain={[0, 'dataMax']}
-                tickCount={6}
               />
-              <YAxis dataKey="source" type="category" stroke="#9ca3af" width={180} />
+              <YAxis 
+                dataKey="source" 
+                type="category" 
+                stroke="#9ca3af" 
+                width={180}
+                tick={{ fontSize: 12 }}
+              />
               <Tooltip
                 contentStyle={{
                   background: '#1f2937',
@@ -196,8 +201,14 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                   fontWeight: '600'
                 }}
                 formatter={(value: any) => [`${value}`, 'Count']}
+                cursor={{ fill: 'rgba(96, 165, 250, 0.1)' }}
               />
-              <Bar dataKey="count" fill="#60a5fa" radius={[0, 8, 8, 0]} />
+              <Bar 
+                dataKey="count" 
+                fill="#60a5fa" 
+                radius={[0, 8, 8, 0]}
+                minPointSize={3}
+              />
             </BarChart>
           </ResponsiveContainer>
         );

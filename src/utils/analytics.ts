@@ -191,20 +191,28 @@ export function getSeverityDistribution(hazards: Hazard[]): Array<{ severity: st
  * 获取数据源分布
  */
 export function getSourceDistribution(hazards: Hazard[]): Array<{ source: string; count: number }> {
-  if (!hazards || hazards.length === 0) return [];
+  // 定义所有已知的数据源（按固定顺序）
+  const allSources = [
+    'DisasterAWARE (pmartin1)',
+    'DisasterAWARE (amontoro)',
+    'DisasterAWARE (achatman)',
+    'DisasterAWARE (acollopy)',
+    'DisasterAWARE (ssigler)',
+    'DisasterAWARE (Automated)'
+  ];
+
+  if (!hazards || hazards.length === 0) {
+    // 返回所有数据源，count 为 0
+    return allSources.map(source => ({ source, count: 0 }));
+  }
 
   const bySource = countBy(hazards, 'source');
 
-  // 获取所有唯一的数据源
-  const allSources = Array.from(new Set(hazards.map(h => h.source)));
-
-  // 返回所有数据源及其计数，按数量降序排列
-  return allSources
-    .map(source => ({
-      source,
-      count: bySource[source] || 0
-    }))
-    .sort((a, b) => b.count - a.count);
+  // 返回所有数据源及其计数（包括 count = 0 的）
+  return allSources.map(source => ({
+    source,
+    count: bySource[source] || 0
+  }));
 }
 
 /**

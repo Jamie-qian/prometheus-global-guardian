@@ -206,6 +206,21 @@ export function generateEnhancedReport(data: ReportData): string {
       color: white;
       font-size: 0.875rem;
       font-weight: 600;
+      min-width: 40px;
+      position: relative;
+    }
+    .bar-percentage {
+      position: absolute;
+      right: 10px;
+      white-space: nowrap;
+      color: white;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    .bar-percentage.outside {
+      position: absolute;
+      left: calc(100% + 8px);
+      color: #4b5563;
+      text-shadow: none;
     }
     .bar-count {
       width: 50px;
@@ -288,14 +303,18 @@ export function generateEnhancedReport(data: ReportData): string {
       <div class="section">
         <h2 class="section-title">Report Information</h2>
         <div class="meta-info">
+          ${organization ? `
           <div class="meta-card">
             <div class="meta-label">Organization</div>
-            <div class="meta-value">${safe(organization) || 'N/A'}</div>
+            <div class="meta-value">${safe(organization)}</div>
           </div>
+          ` : ''}
+          ${email ? `
           <div class="meta-card">
             <div class="meta-label">Contact Email</div>
-            <div class="meta-value">${safe(email) || 'N/A'}</div>
+            <div class="meta-value">${safe(email)}</div>
           </div>
+          ` : ''}
           <div class="meta-card">
             <div class="meta-label">Report Date</div>
             <div class="meta-value">${createdAt}</div>
@@ -354,15 +373,15 @@ export function generateEnhancedReport(data: ReportData): string {
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
             <div>
               <div style="font-size: 0.875rem; opacity: 0.8;">Severity</div>
-              <div style="font-size: 1.5rem; font-weight: 600;">${riskScore.severity}/100</div>
+              <div style="font-size: 1.5rem; font-weight: 600;">${riskScore.factors.severity}/100</div>
             </div>
             <div>
               <div style="font-size: 0.875rem; opacity: 0.8;">Frequency</div>
-              <div style="font-size: 1.5rem; font-weight: 600;">${riskScore.frequency}/100</div>
+              <div style="font-size: 1.5rem; font-weight: 600;">${riskScore.factors.frequency}/100</div>
             </div>
             <div>
-              <div style="font-size: 0.875rem; opacity: 0.8;">Impact</div>
-              <div style="font-size: 1.5rem; font-weight: 600;">${riskScore.impact}/100</div>
+              <div style="font-size: 0.875rem; opacity: 0.8;">Geographic</div>
+              <div style="font-size: 1.5rem; font-weight: 600;">${riskScore.factors.geographic}/100</div>
             </div>
           </div>
         </div>
@@ -379,7 +398,7 @@ export function generateEnhancedReport(data: ReportData): string {
               <div class="bar-label">${item.type}</div>
               <div class="bar-track">
                 <div class="bar-fill" style="width: ${item.percentage}%; background-color: ${item.color};">
-                  ${item.percentage}%
+                  <span class="bar-percentage ${item.percentage < 8 ? 'outside' : ''}">${item.percentage}%</span>
                 </div>
               </div>
               <div class="bar-count">${item.count}</div>

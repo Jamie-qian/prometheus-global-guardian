@@ -81,7 +81,14 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                   background: '#1f2937',
                   border: '1px solid #374151',
                   borderRadius: '8px',
-                  color: '#fff'
+                  color: '#e5e7eb'
+                }}
+                itemStyle={{
+                  color: '#e5e7eb'
+                }}
+                labelStyle={{
+                  color: '#f3f4f6',
+                  fontWeight: '600'
                 }}
                 formatter={(value: any, name: string, props: any) => [
                   `${value} (${props.payload.percentage}%)`,
@@ -140,7 +147,14 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                   background: '#1f2937',
                   border: '1px solid #374151',
                   borderRadius: '8px',
-                  color: '#fff'
+                  color: '#e5e7eb'
+                }}
+                itemStyle={{
+                  color: '#e5e7eb'
+                }}
+                labelStyle={{
+                  color: '#f3f4f6',
+                  fontWeight: '600'
                 }}
                 labelFormatter={(value) => new Date(value).toLocaleDateString()}
               />
@@ -159,15 +173,29 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={sourceData} layout="horizontal">
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis type="number" stroke="#9ca3af" />
-              <YAxis dataKey="source" type="category" stroke="#9ca3af" width={100} />
+              <XAxis 
+                type="number" 
+                stroke="#9ca3af"
+                allowDecimals={false}
+                domain={[0, 'dataMax']}
+                tickCount={6}
+              />
+              <YAxis dataKey="source" type="category" stroke="#9ca3af" width={180} />
               <Tooltip
                 contentStyle={{
                   background: '#1f2937',
                   border: '1px solid #374151',
                   borderRadius: '8px',
-                  color: '#fff'
+                  color: '#e5e7eb'
                 }}
+                itemStyle={{
+                  color: '#e5e7eb'
+                }}
+                labelStyle={{
+                  color: '#f3f4f6',
+                  fontWeight: '600'
+                }}
+                formatter={(value: any) => [`${value}`, 'Count']}
               />
               <Bar dataKey="count" fill="#60a5fa" radius={[0, 8, 8, 0]} />
             </BarChart>

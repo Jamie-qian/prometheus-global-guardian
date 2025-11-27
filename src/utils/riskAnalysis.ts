@@ -4,6 +4,7 @@ import { countBy } from 'lodash';
 export interface RiskScore {
   overall: number;
   level: 'Low' | 'Moderate' | 'High' | 'Critical';
+  description: string;
   factors: {
     frequency: number;
     severity: number;
@@ -26,6 +27,7 @@ export function calculateRiskScore(hazards: Hazard[]): RiskScore {
     return {
       overall: 0,
       level: 'Low',
+      description: 'No hazard data available',
       factors: {
         frequency: 0,
         severity: 0,
@@ -53,14 +55,26 @@ export function calculateRiskScore(hazards: Hazard[]): RiskScore {
   const overall = (frequencyScore * 0.4 + severityScore * 0.4 + geographicScore * 0.2);
 
   let level: 'Low' | 'Moderate' | 'High' | 'Critical';
-  if (overall >= 75) level = 'Critical';
-  else if (overall >= 50) level = 'High';
-  else if (overall >= 25) level = 'Moderate';
-  else level = 'Low';
+  let description: string;
+  
+  if (overall >= 75) {
+    level = 'Critical';
+    description = 'Immediate action required - Multiple high-severity hazards detected';
+  } else if (overall >= 50) {
+    level = 'High';
+    description = 'Close monitoring needed - Elevated hazard activity';
+  } else if (overall >= 25) {
+    level = 'Moderate';
+    description = 'Normal monitoring - Standard hazard levels';
+  } else {
+    level = 'Low';
+    description = 'Low risk - Minimal hazard activity';
+  }
 
   return {
     overall: Math.round(overall),
     level,
+    description,
     factors: {
       frequency: Math.round(frequencyScore),
       severity: Math.round(severityScore),

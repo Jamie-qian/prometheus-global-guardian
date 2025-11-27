@@ -195,8 +195,15 @@ export function getSourceDistribution(hazards: Hazard[]): Array<{ source: string
 
   const bySource = countBy(hazards, 'source');
 
-  return Object.entries(bySource)
-    .map(([source, count]) => ({ source, count }))
+  // 获取所有唯一的数据源
+  const allSources = Array.from(new Set(hazards.map(h => h.source)));
+
+  // 返回所有数据源及其计数，按数量降序排列
+  return allSources
+    .map(source => ({
+      source,
+      count: bySource[source] || 0
+    }))
     .sort((a, b) => b.count - a.count);
 }
 

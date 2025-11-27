@@ -39,8 +39,27 @@ export function sampleHazards(hazards: Hazard[], maxSamples: number = 1000): Haz
 
   // Ensure we include the most recent and highest severity hazards
   const sortedByDate = [...hazards].sort((a, b) => {
-    const dateA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-    const dateB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    let dateA = 0;
+    let dateB = 0;
+    
+    if (a.timestamp) {
+      try {
+        const date = new Date(a.timestamp);
+        dateA = !isNaN(date.getTime()) ? date.getTime() : 0;
+      } catch (e) {
+        dateA = 0;
+      }
+    }
+    
+    if (b.timestamp) {
+      try {
+        const date = new Date(b.timestamp);
+        dateB = !isNaN(date.getTime()) ? date.getTime() : 0;
+      } catch (e) {
+        dateB = 0;
+      }
+    }
+    
     return dateB - dateA;
   });
   const recentHazards = sortedByDate.slice(0, Math.min(50, maxSamples * 0.1));
@@ -137,7 +156,17 @@ export function assessDataQuality(hazards: Hazard[]): DataQuality {
   const duplicates = ids.length - new Set(ids).size;
 
   // Calculate time range
-  const dates = hazards.filter(h => h.timestamp).map(h => new Date(h.timestamp!));
+  const dates = hazards
+    .filter(h => h.timestamp)
+    .map(h => {
+      try {
+        const date = new Date(h.timestamp!);
+        return !isNaN(date.getTime()) ? date : null;
+      } catch (e) {
+        return null;
+      }
+    })
+    .filter((d): d is Date => d !== null);
   const timeRange = dates.length > 0 ? {
     start: new Date(Math.min(...dates.map(d => d.getTime()))),
     end: new Date(Math.max(...dates.map(d => d.getTime())))

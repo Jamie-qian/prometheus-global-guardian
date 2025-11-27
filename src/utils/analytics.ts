@@ -270,14 +270,22 @@ export function getTrendComparison(hazards: Hazard[], days: number = 7): TrendCo
   
   const currentPeriod = hazards.filter(h => {
     if (!h.timestamp) return false;
-    const date = new Date(h.timestamp);
-    return isAfter(date, currentPeriodStart);
+    try {
+      const date = new Date(h.timestamp);
+      return !isNaN(date.getTime()) && isAfter(date, currentPeriodStart);
+    } catch (e) {
+      return false;
+    }
   });
   
   const previousPeriod = hazards.filter(h => {
     if (!h.timestamp) return false;
-    const date = new Date(h.timestamp);
-    return isAfter(date, previousPeriodStart) && date < currentPeriodStart;
+    try {
+      const date = new Date(h.timestamp);
+      return !isNaN(date.getTime()) && isAfter(date, previousPeriodStart) && date < currentPeriodStart;
+    } catch (e) {
+      return false;
+    }
   });
   
   const current = currentPeriod.length;
@@ -313,11 +321,25 @@ export function getStatisticalInsights(hazards: Hazard[]): StatisticalInsights {
   const dailyCounts: Record<string, number> = {};
   hazards.forEach(h => {
     if (!h.timestamp) return;
-    const day = new Date(h.timestamp).toISOString().split('T')[0];
-    dailyCounts[day] = (dailyCounts[day] || 0) + 1;
+    try {
+      const date = new Date(h.timestamp);
+      // Check if date is valid
+      if (!isNaN(date.getTime())) {
+        const day = date.toISOString().split('T')[0];
+        dailyCounts[day] = (dailyCounts[day] || 0) + 1;
+      }
+    } catch (e) {
+      // Skip invalid dates
+      return;
+    }
   });
   
   const counts = Object.values(dailyCounts);
+  
+  // Return zeros if no valid dates found
+  if (counts.length === 0) {
+    return { mean: 0, median: 0, mode: 0, standardDeviation: 0, outliers: 0 };
+  }
   
   // Calculate mean
   const mean = counts.reduce((a, b) => a + b, 0) / counts.length;
@@ -333,9 +355,14 @@ export function getStatisticalInsights(hazards: Hazard[]): StatisticalInsights {
   counts.forEach(count => {
     frequency[count] = (frequency[count] || 0) + 1;
   });
-  const mode = parseInt(Object.keys(frequency).reduce((a, b) => 
-    frequency[parseInt(a)] > frequency[parseInt(b)] ? a : b
-  ));
+  
+  // Get mode safely
+  const freqKeys = Object.keys(frequency);
+  const mode = freqKeys.length > 0 
+    ? parseInt(freqKeys.reduce((a, b) => 
+        frequency[parseInt(a)] > frequency[parseInt(b)] ? a : b
+      ))
+    : 0;
   
   // Calculate standard deviation
   const variance = counts.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / counts.length;

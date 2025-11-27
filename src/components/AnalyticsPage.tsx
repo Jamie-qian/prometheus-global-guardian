@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import StatisticsCard from "./StatisticsCard";
 import ChartsPanel from "./ChartsPanel";
 import InsightsPanel from "./InsightsPanel";
+import ErrorBoundary from "./ErrorBoundary";
 import type { Hazard } from "../types";
 import { exportToCSV, exportToJSON } from "../utils/dataExport";
 import { sampleHazards, shouldSampleData, assessDataQuality } from "../utils/dataSampling";
@@ -9,12 +10,16 @@ import { sampleHazards, shouldSampleData, assessDataQuality } from "../utils/dat
 interface AnalyticsPageProps {
   hazards: Hazard[];
   onClose: () => void;
+  onRefresh?: () => void;
 }
 
-const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose }) => {
+const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose, onRefresh }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(5);
   
   // Intelligent data sampling for large datasets
   const samplingInfo = useMemo(() => shouldSampleData(hazards, 1000), [hazards]);
@@ -27,9 +32,27 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose }) => {
   // Assess data quality
   const dataQuality = useMemo(() => assessDataQuality(hazards), [hazards]);
   
+  // Auto-refresh effect
+  useEffect(() => {
+    if (!autoRefreshEnabled) return;
+    
+    const intervalMs = autoRefreshInterval * 60 * 1000; // Convert minutes to milliseconds
+    const timer = setInterval(() => {
+      handleRefresh();
+    }, intervalMs);
+    
+    return () => clearInterval(timer);
+  }, [autoRefreshEnabled, autoRefreshInterval]);
+  
   const handleRefresh = () => {
     setIsRefreshing(true);
     setRefreshKey(prev => prev + 1);
+    
+    // Call parent refresh if provided
+    if (onRefresh) {
+      onRefresh();
+    }
+    
     // Simulate refresh animation
     setTimeout(() => {
       setIsRefreshing(false);
@@ -91,6 +114,32 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose }) => {
             )}
           </div>
           <button 
+            className={`settings-btn ${autoRefreshEnabled ? 'active' : ''}`}
+            onClick={() => setShowSettings(!showSettings)}
+            title="Settings"
+          >
+            <svg
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+          </button>
+          <button 
             className={`refresh-btn ${isRefreshing ? 'refreshing' : ''}`}
             onClick={handleRefresh}
             title="Refresh Data"
@@ -128,6 +177,77 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose }) => {
           </button>
         </div>
       </div>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="settings-panel">
+          <div className="settings-header">
+            <h3>Settings</h3>
+            <button onClick={() => setShowSettings(false)} className="settings-close">
+              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <div className="settings-content">
+            <div className="setting-group">
+              <div className="setting-header">
+                <label className="setting-label">
+                  <input
+                    type="checkbox"
+                    checked={autoRefreshEnabled}
+                    onChange={(e) => setAutoRefreshEnabled(e.target.checked)}
+                    className="setting-checkbox"
+                  />
+                  <span>Auto-refresh data</span>
+                </label>
+                {autoRefreshEnabled && (
+                  <span className="setting-status">Active</span>
+                )}
+              </div>
+              <p className="setting-description">
+                Automatically refresh data at regular intervals
+              </p>
+            </div>
+
+            {autoRefreshEnabled && (
+              <div className="setting-group">
+                <label className="setting-label">Refresh Interval</label>
+                <div className="interval-options">
+                  <button
+                    className={`interval-btn ${autoRefreshInterval === 5 ? 'active' : ''}`}
+                    onClick={() => setAutoRefreshInterval(5)}
+                  >
+                    5 min
+                  </button>
+                  <button
+                    className={`interval-btn ${autoRefreshInterval === 10 ? 'active' : ''}`}
+                    onClick={() => setAutoRefreshInterval(10)}
+                  >
+                    10 min
+                  </button>
+                  <button
+                    className={`interval-btn ${autoRefreshInterval === 15 ? 'active' : ''}`}
+                    onClick={() => setAutoRefreshInterval(15)}
+                  >
+                    15 min
+                  </button>
+                  <button
+                    className={`interval-btn ${autoRefreshInterval === 30 ? 'active' : ''}`}
+                    onClick={() => setAutoRefreshInterval(30)}
+                  >
+                    30 min
+                  </button>
+                </div>
+                <p className="setting-note">
+                  Next refresh in {autoRefreshInterval} minutes
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       
       <div className="analytics-content">
         {/* Data Sampling Notice */}
@@ -157,9 +277,17 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose }) => {
           </div>
         )}
 
-        <StatisticsCard hazards={processedHazards} />
-        <InsightsPanel hazards={processedHazards} />
-        <ChartsPanel hazards={processedHazards} />
+        <ErrorBoundary fallback={<div className="panel-error">Failed to load statistics</div>}>
+          <StatisticsCard hazards={processedHazards} />
+        </ErrorBoundary>
+        
+        <ErrorBoundary fallback={<div className="panel-error">Failed to load insights</div>}>
+          <InsightsPanel hazards={processedHazards} />
+        </ErrorBoundary>
+        
+        <ErrorBoundary fallback={<div className="panel-error">Failed to load charts</div>}>
+          <ChartsPanel hazards={processedHazards} />
+        </ErrorBoundary>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import MapView from "./components/MapView";
 import SaveReportModal from "./components/SaveReportModal";
 import SettingsModal from "./components/SettingsModal";
 import AnalyticsPage from "./components/AnalyticsPage";
+import ErrorBoundary from "./components/ErrorBoundary";
 import type { Hazard, SaveReportPayload } from "./types";
 
 const App: React.FC = () => {
@@ -64,10 +65,12 @@ const App: React.FC = () => {
       />
       <main>
         {isAnalyticsOpen ? (
-          <AnalyticsPage 
-            hazards={disasters} 
-            onClose={() => setIsAnalyticsOpen(false)}
-          />
+          <ErrorBoundary>
+            <AnalyticsPage 
+              hazards={disasters} 
+              onClose={() => setIsAnalyticsOpen(false)}
+            />
+          </ErrorBoundary>
         ) : (
           <>
             <MapView

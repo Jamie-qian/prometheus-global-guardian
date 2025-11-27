@@ -7,6 +7,11 @@ import {
   predictHighActivityPeriod
 } from '../utils/advancedAnalytics';
 import { getTrendComparison, getStatisticalInsights } from '../utils/analytics';
+import { 
+  analyzeTypeSeverityCorrelation, 
+  analyzeGeographicCorrelation,
+  getCorrelationInsights 
+} from '../utils/correlationAnalysis';
 
 interface InsightsPanelProps {
   hazards: Hazard[];
@@ -19,6 +24,11 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ hazards }) => {
   const activityPrediction = predictHighActivityPeriod(hazards);
   const trend = getTrendComparison(hazards, 7);
   const stats = getStatisticalInsights(hazards);
+  
+  // Correlation analysis
+  const typeSeverityCorr = analyzeTypeSeverityCorrelation(hazards).slice(0, 3);
+  const geographicCorr = analyzeGeographicCorrelation(hazards).slice(0, 3);
+  const correlationInsights = getCorrelationInsights(hazards);
 
   const getRiskColor = (level: string) => {
     switch (level) {
@@ -211,6 +221,82 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ hazards }) => {
           </div>
         </div>
       </div>
+
+      {/* Correlation Analysis */}
+      <div className="insight-section">
+        <h4>Correlation Insights</h4>
+        <div className="correlation-insights">
+          {correlationInsights.map((insight, i) => (
+            <div key={i} className="correlation-insight-item">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span>{insight}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Type-Severity Correlation */}
+      {typeSeverityCorr.length > 0 && (
+        <div className="insight-section">
+          <h4>Type-Severity Correlation</h4>
+          <div className="correlation-list">
+            {typeSeverityCorr.map((corr, i) => (
+              <div key={i} className="correlation-item">
+                <div className="correlation-header">
+                  <span className="correlation-type">{corr.type.replace(/_/g, ' ')}</span>
+                  <span className="correlation-score" style={{ 
+                    color: corr.averageSeverityScore >= 3 ? '#ef4444' : 
+                           corr.averageSeverityScore >= 2.5 ? '#f59e0b' : '#3b82f6' 
+                  }}>
+                    {corr.averageSeverityScore}/4.0
+                  </span>
+                </div>
+                <div className="severity-breakdown">
+                  {corr.severityDistribution.extreme > 0 && (
+                    <span className="severity-badge extreme">Extreme: {corr.severityDistribution.extreme}</span>
+                  )}
+                  {corr.severityDistribution.severe > 0 && (
+                    <span className="severity-badge severe">Severe: {corr.severityDistribution.severe}</span>
+                  )}
+                  {corr.severityDistribution.moderate > 0 && (
+                    <span className="severity-badge moderate">Moderate: {corr.severityDistribution.moderate}</span>
+                  )}
+                  {corr.severityDistribution.minor > 0 && (
+                    <span className="severity-badge minor">Minor: {corr.severityDistribution.minor}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Geographic Correlation */}
+      {geographicCorr.length > 0 && (
+        <div className="insight-section">
+          <h4>Geographic Patterns</h4>
+          <div className="geo-correlation-list">
+            {geographicCorr.map((geo, i) => (
+              <div key={i} className="geo-correlation-item">
+                <div className="geo-header">
+                  <span className="geo-region">{geo.region}</span>
+                  <span className="geo-count">{geo.hazardCount} events</span>
+                </div>
+                <div className="geo-details">
+                  <span className="geo-detail">
+                    <strong>Dominant:</strong> {geo.dominantType.replace(/_/g, ' ')}
+                  </span>
+                  <span className="geo-detail">
+                    <strong>Severity:</strong> {geo.dominantSeverity}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

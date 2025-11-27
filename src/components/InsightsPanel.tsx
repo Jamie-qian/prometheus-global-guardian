@@ -6,6 +6,7 @@ import {
   getHighRiskRegions,
   predictHighActivityPeriod
 } from '../utils/advancedAnalytics';
+import { getTrendComparison, getStatisticalInsights } from '../utils/analytics';
 
 interface InsightsPanelProps {
   hazards: Hazard[];
@@ -16,6 +17,8 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ hazards }) => {
   const clusters = clusterHazards(hazards, 500).slice(0, 3); // Top 3 clusters
   const highRiskRegions = getHighRiskRegions(hazards).slice(0, 3); // Top 3 regions
   const activityPrediction = predictHighActivityPeriod(hazards);
+  const trend = getTrendComparison(hazards, 7);
+  const stats = getStatisticalInsights(hazards);
 
   const getRiskColor = (level: string) => {
     switch (level) {
@@ -147,6 +150,66 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ hazards }) => {
       <div className="insight-section">
         <h4>Activity Pattern</h4>
         <p className="activity-info">{activityPrediction}</p>
+      </div>
+
+      {/* Trend Comparison */}
+      <div className="insight-section">
+        <h4>7-Day Trend</h4>
+        <div className="trend-comparison">
+          <div className="trend-stat">
+            <span className="trend-label">Current Period</span>
+            <span className="trend-value">{trend.current} hazards</span>
+          </div>
+          <div className="trend-arrow">
+            {trend.trend === 'up' && (
+              <svg width="24" height="24" fill="none" stroke="#ef4444" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            )}
+            {trend.trend === 'down' && (
+              <svg width="24" height="24" fill="none" stroke="#10b981" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+              </svg>
+            )}
+            {trend.trend === 'stable' && (
+              <svg width="24" height="24" fill="none" stroke="#6b7280" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 12h14" />
+              </svg>
+            )}
+          </div>
+          <div className="trend-stat">
+            <span className="trend-label">Previous Period</span>
+            <span className="trend-value">{trend.previous} hazards</span>
+          </div>
+        </div>
+        <div className="trend-summary" style={{ 
+          color: trend.trend === 'up' ? '#ef4444' : trend.trend === 'down' ? '#10b981' : '#9ca3af'
+        }}>
+          {trend.change > 0 ? '+' : ''}{trend.change} ({trend.percentChange > 0 ? '+' : ''}{trend.percentChange}%)
+        </div>
+      </div>
+
+      {/* Statistical Insights */}
+      <div className="insight-section">
+        <h4>Statistical Summary</h4>
+        <div className="stats-grid">
+          <div className="stat-item">
+            <span className="stat-label">Daily Average</span>
+            <span className="stat-value">{stats.mean}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Median</span>
+            <span className="stat-value">{stats.median}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Std Deviation</span>
+            <span className="stat-value">{stats.standardDeviation}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Anomalies</span>
+            <span className="stat-value">{stats.outliers}</span>
+          </div>
+        </div>
       </div>
     </div>
   );

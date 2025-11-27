@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   PieChart,
   Pie,
@@ -27,15 +27,29 @@ interface ChartsPanelProps {
 }
 
 type ChartType = 'type' | 'severity' | 'timeline' | 'source';
+type TimeRange = '24h' | '7d' | '30d' | 'all';
 
 const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
   const [selectedChart, setSelectedChart] = useState<ChartType>('type');
   const [isExpanded, setIsExpanded] = useState(true);
+  const [timeRange, setTimeRange] = useState<TimeRange>('7d');
 
-  const typeData = getTypeDistribution(hazards);
-  const severityData = getSeverityDistribution(hazards);
-  const timelineData = getTimeSeriesData(hazards, 14); // Last 14 days
-  const sourceData = getSourceDistribution(hazards);
+  // Map time range to days
+  const getDaysFromRange = (range: TimeRange): number => {
+    switch (range) {
+      case '24h': return 1;
+      case '7d': return 7;
+      case '30d': return 30;
+      case 'all': return 365; // Show up to 1 year
+      default: return 7;
+    }
+  };
+
+  // Cache chart data calculations with useMemo
+  const typeData = useMemo(() => getTypeDistribution(hazards), [hazards]);
+  const severityData = useMemo(() => getSeverityDistribution(hazards), [hazards]);
+  const timelineData = useMemo(() => getTimeSeriesData(hazards, getDaysFromRange(timeRange)), [hazards, timeRange]);
+  const sourceData = useMemo(() => getSourceDistribution(hazards), [hazards]);
 
   const renderChart = () => {
     if (hazards.length === 0) {
@@ -133,39 +147,67 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
 
       case 'timeline':
         return (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={timelineData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis
-                dataKey="date"
-                stroke="#9ca3af"
-                tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              />
-              <YAxis stroke="#9ca3af" />
-              <Tooltip
-                contentStyle={{
-                  background: '#1f2937',
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#e5e7eb'
-                }}
-                itemStyle={{
-                  color: '#e5e7eb'
-                }}
-                labelStyle={{
-                  color: '#f3f4f6',
-                  fontWeight: '600'
-                }}
-                labelFormatter={(value) => new Date(value).toLocaleDateString()}
-              />
-              <Legend />
-              <Line type="monotone" dataKey="earthquakes" stroke="#ef4444" strokeWidth={2} name="Earthquakes" />
-              <Line type="monotone" dataKey="volcanoes" stroke="#f97316" strokeWidth={2} name="Volcanoes" />
-              <Line type="monotone" dataKey="storms" stroke="#3b82f6" strokeWidth={2} name="Storms" />
-              <Line type="monotone" dataKey="floods" stroke="#06b6d4" strokeWidth={2} name="Floods" />
-              <Line type="monotone" dataKey="wildfires" stroke="#dc2626" strokeWidth={2} name="Wildfires" />
-            </LineChart>
-          </ResponsiveContainer>
+          <>
+            <div className="time-range-selector">
+              <button
+                className={`time-range-btn ${timeRange === '24h' ? 'active' : ''}`}
+                onClick={() => setTimeRange('24h')}
+              >
+                24 Hours
+              </button>
+              <button
+                className={`time-range-btn ${timeRange === '7d' ? 'active' : ''}`}
+                onClick={() => setTimeRange('7d')}
+              >
+                7 Days
+              </button>
+              <button
+                className={`time-range-btn ${timeRange === '30d' ? 'active' : ''}`}
+                onClick={() => setTimeRange('30d')}
+              >
+                30 Days
+              </button>
+              <button
+                className={`time-range-btn ${timeRange === 'all' ? 'active' : ''}`}
+                onClick={() => setTimeRange('all')}
+              >
+                All Time
+              </button>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={timelineData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis
+                  dataKey="date"
+                  stroke="#9ca3af"
+                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                />
+                <YAxis stroke="#9ca3af" />
+                <Tooltip
+                  contentStyle={{
+                    background: '#1f2937',
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    color: '#e5e7eb'
+                  }}
+                  itemStyle={{
+                    color: '#e5e7eb'
+                  }}
+                  labelStyle={{
+                    color: '#f3f4f6',
+                    fontWeight: '600'
+                  }}
+                  labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                />
+                <Legend />
+                <Line type="monotone" dataKey="earthquakes" stroke="#ef4444" strokeWidth={2} name="Earthquakes" />
+                <Line type="monotone" dataKey="volcanoes" stroke="#f97316" strokeWidth={2} name="Volcanoes" />
+                <Line type="monotone" dataKey="storms" stroke="#3b82f6" strokeWidth={2} name="Storms" />
+                <Line type="monotone" dataKey="floods" stroke="#06b6d4" strokeWidth={2} name="Floods" />
+                <Line type="monotone" dataKey="wildfires" stroke="#dc2626" strokeWidth={2} name="Wildfires" />
+              </LineChart>
+            </ResponsiveContainer>
+          </>
         );
 
       case 'source':

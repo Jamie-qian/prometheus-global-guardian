@@ -251,3 +251,104 @@ export function getGeographicStats(hazards: Hazard[]): Array<{ region: string; c
     .map(([region, count]) => ({ region, count }))
     .sort((a, b) => b.count - a.count);
 }
+
+/**
+ * Calculate trend comparison - current period vs previous period
+ */
+export interface TrendComparison {
+  current: number;
+  previous: number;
+  change: number;
+  percentChange: number;
+  trend: 'up' | 'down' | 'stable';
+}
+
+export function getTrendComparison(hazards: Hazard[], days: number = 7): TrendComparison {
+  const now = new Date();
+  const currentPeriodStart = subDays(now, days);
+  const previousPeriodStart = subDays(now, days * 2);
+  
+  const currentPeriod = hazards.filter(h => {
+    if (!h.timestamp) return false;
+    const date = new Date(h.timestamp);
+    return isAfter(date, currentPeriodStart);
+  });
+  
+  const previousPeriod = hazards.filter(h => {
+    if (!h.timestamp) return false;
+    const date = new Date(h.timestamp);
+    return isAfter(date, previousPeriodStart) && date < currentPeriodStart;
+  });
+  
+  const current = currentPeriod.length;
+  const previous = previousPeriod.length;
+  const change = current - previous;
+  const percentChange = previous === 0 ? 0 : Math.round((change / previous) * 100);
+  
+  let trend: 'up' | 'down' | 'stable' = 'stable';
+  if (Math.abs(percentChange) >= 10) {
+    trend = percentChange > 0 ? 'up' : 'down';
+  }
+  
+  return { current, previous, change, percentChange, trend };
+}
+
+/**
+ * Get statistical insights
+ */
+export interface StatisticalInsights {
+  mean: number;
+  median: number;
+  mode: number;
+  standardDeviation: number;
+  outliers: number;
+}
+
+export function getStatisticalInsights(hazards: Hazard[]): StatisticalInsights {
+  if (hazards.length === 0) {
+    return { mean: 0, median: 0, mode: 0, standardDeviation: 0, outliers: 0 };
+  }
+  
+  // Count hazards by day for statistical analysis
+  const dailyCounts: Record<string, number> = {};
+  hazards.forEach(h => {
+    if (!h.timestamp) return;
+    const day = new Date(h.timestamp).toISOString().split('T')[0];
+    dailyCounts[day] = (dailyCounts[day] || 0) + 1;
+  });
+  
+  const counts = Object.values(dailyCounts);
+  
+  // Calculate mean
+  const mean = counts.reduce((a, b) => a + b, 0) / counts.length;
+  
+  // Calculate median
+  const sorted = [...counts].sort((a, b) => a - b);
+  const median = sorted.length % 2 === 0
+    ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+    : sorted[Math.floor(sorted.length / 2)];
+  
+  // Calculate mode
+  const frequency: Record<number, number> = {};
+  counts.forEach(count => {
+    frequency[count] = (frequency[count] || 0) + 1;
+  });
+  const mode = parseInt(Object.keys(frequency).reduce((a, b) => 
+    frequency[parseInt(a)] > frequency[parseInt(b)] ? a : b
+  ));
+  
+  // Calculate standard deviation
+  const variance = counts.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / counts.length;
+  const standardDeviation = Math.sqrt(variance);
+  
+  // Count outliers (values > 2 standard deviations from mean)
+  const outliers = counts.filter(val => Math.abs(val - mean) > 2 * standardDeviation).length;
+  
+  return {
+    mean: Math.round(mean * 10) / 10,
+    median,
+    mode,
+    standardDeviation: Math.round(standardDeviation * 10) / 10,
+    outliers
+  };
+}

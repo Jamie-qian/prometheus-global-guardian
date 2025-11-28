@@ -405,7 +405,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ hazards }) => {
             </div>
           </>
         )}
-      )}
+      </div>
     </div>
   );
 };

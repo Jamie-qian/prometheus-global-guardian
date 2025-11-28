@@ -3,6 +3,8 @@ import StatisticsCard from "./StatisticsCard";
 import ChartsPanel from "./ChartsPanel";
 import InsightsPanel from "./InsightsPanel";
 import ErrorBoundary from "./ErrorBoundary";
+import ChartCustomizationModal, { DEFAULT_CHART_SETTINGS } from "./ChartCustomizationModal";
+import type { ChartSettings } from "./ChartCustomizationModal";
 import type { Hazard } from "../types";
 import { exportToCSV, exportToJSON } from "../utils/dataExport";
 import { sampleHazards, shouldSampleData, assessDataQuality } from "../utils/dataSampling";
@@ -13,6 +15,8 @@ interface AnalyticsPageProps {
   onRefresh?: () => void;
 }
 
+const STORAGE_KEY = 'prometheus-chart-settings';
+
 const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose, onRefresh }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -20,6 +24,12 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose, onRefre
   const [showSettings, setShowSettings] = useState(false);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
   const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(5);
+  const [showCustomization, setShowCustomization] = useState(false);
+  const [chartSettings, setChartSettings] = useState<ChartSettings>(() => {
+    // Load settings from localStorage
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : DEFAULT_CHART_SETTINGS;
+  });
   
   // Intelligent data sampling for large datasets
   const samplingInfo = useMemo(() => shouldSampleData(hazards, 1000), [hazards]);
@@ -68,6 +78,11 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose, onRefre
     exportToJSON(processedHazards, `hazards-${new Date().toISOString().split('T')[0]}.json`);
     setShowExportMenu(false);
   };
+
+  const handleSaveSettings = (newSettings: ChartSettings) => {
+    setChartSettings(newSettings);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+  };
   
   return (
     <div className="analytics-page">
@@ -113,6 +128,27 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose, onRefre
               </div>
             )}
           </div>
+          <button 
+            className="customize-btn"
+            onClick={() => setShowCustomization(true)}
+            title="Customize Charts"
+          >
+            <svg
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+              />
+            </svg>
+            Customize
+          </button>
           <button 
             className={`settings-btn ${autoRefreshEnabled ? 'active' : ''}`}
             onClick={() => setShowSettings(!showSettings)}
@@ -288,6 +324,14 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose, onRefre
         <ErrorBoundary fallback={<div className="panel-error">Failed to load charts</div>}>
           <ChartsPanel hazards={processedHazards} />
         </ErrorBoundary>
+
+        {/* Chart Customization Modal */}
+        <ChartCustomizationModal
+          isOpen={showCustomization}
+          onClose={() => setShowCustomization(false)}
+          onSave={handleSaveSettings}
+          currentSettings={chartSettings}
+        />
       </div>
     </div>
   );

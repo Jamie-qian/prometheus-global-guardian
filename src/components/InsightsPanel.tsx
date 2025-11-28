@@ -303,18 +303,19 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ hazards }) => {
             ))}
           </div>
         </div>
+      )}
 
-        <div className="prediction-toggle-section">
-          <button 
-            className={`prediction-toggle-btn ${showPredictions ? 'active' : ''}`}
-            onClick={() => setShowPredictions(!showPredictions)}
-          >
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
-            {showPredictions ? 'Hide' : 'Show'} Predictive Analysis
-          </button>
-        </div>
+      <div className="prediction-toggle-section">
+        <button 
+          className={`prediction-toggle-btn ${showPredictions ? 'active' : ''}`}
+          onClick={() => setShowPredictions(!showPredictions)}
+        >
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+          {showPredictions ? 'Hide' : 'Show'} Predictive Analysis
+        </button>
+      </div>
 
         {showPredictions && (
           <>

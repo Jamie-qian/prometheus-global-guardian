@@ -169,7 +169,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
       case 'type':
         return (
           <ResponsiveContainer width="100%" height={400}>
-            <PieChart onClick={(data) => handleChartClick(data, 'type')}>
+            <PieChart>
               <Pie
                 data={typeData as any}
                 dataKey="count"
@@ -179,6 +179,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                 outerRadius={120}
                 innerRadius={60}
                 paddingAngle={2}
+                onClick={(data) => handleChartClick({ activePayload: [{ payload: data }] }, 'type')}
                 label={(entry: any) => {
                   // Only show label if percentage is above 5% to avoid clutter
                   if (entry.percentage >= 5) {
@@ -214,7 +215,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
       case 'severity':
         return (
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={severityData} onClick={(data) => handleChartClick(data, 'severity')}>
+            <BarChart data={severityData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="severity" stroke="#9ca3af" />
               <YAxis stroke="#9ca3af" />
@@ -222,7 +223,12 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                 content={<CustomChartTooltip chartType="severity" totalHazards={hazards.length} />}
                 cursor={{ fill: 'rgba(96, 165, 250, 0.1)' }}
               />
-              <Bar dataKey="count" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
+              <Bar 
+                dataKey="count" 
+                radius={[8, 8, 0, 0]} 
+                style={{ cursor: 'pointer' }}
+                onClick={(data) => handleChartClick({ activePayload: [{ payload: data }] }, 'severity')}
+              >
                 {severityData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
@@ -287,7 +293,6 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
             <ResponsiveContainer width="100%" height={300}>
               <LineChart
                 data={getZoomedData()}
-                onClick={!zoomEnabled ? (data) => handleChartClick(data, 'date') : undefined}
                 onMouseDown={zoomEnabled ? (e: any) => e?.activeLabel && setRefAreaLeft(e.activeLabel) : undefined}
                 onMouseMove={zoomEnabled ? (e: any) => refAreaLeft && e?.activeLabel && setRefAreaRight(e.activeLabel) : undefined}
                 onMouseUp={zoomEnabled ? handleZoomIn : undefined}
@@ -307,11 +312,51 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                   cursor={{ stroke: '#60a5fa', strokeWidth: 2 }}
                 />
                 <Legend />
-                <Line type="monotone" dataKey="earthquakes" stroke="#ef4444" strokeWidth={2} name="Earthquakes" style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }} />
-                <Line type="monotone" dataKey="volcanoes" stroke="#f97316" strokeWidth={2} name="Volcanoes" style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }} />
-                <Line type="monotone" dataKey="storms" stroke="#3b82f6" strokeWidth={2} name="Storms" style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }} />
-                <Line type="monotone" dataKey="floods" stroke="#06b6d4" strokeWidth={2} name="Floods" style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }} />
-                <Line type="monotone" dataKey="wildfires" stroke="#dc2626" strokeWidth={2} name="Wildfires" style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }} />
+                <Line 
+                  type="monotone" 
+                  dataKey="earthquakes" 
+                  stroke="#ef4444" 
+                  strokeWidth={2} 
+                  name="Earthquakes" 
+                  style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }}
+                  onClick={!zoomEnabled ? (data) => handleChartClick({ activePayload: [{ payload: data }] }, 'date') : undefined}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="volcanoes" 
+                  stroke="#f97316" 
+                  strokeWidth={2} 
+                  name="Volcanoes" 
+                  style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }}
+                  onClick={!zoomEnabled ? (data) => handleChartClick({ activePayload: [{ payload: data }] }, 'date') : undefined}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="storms" 
+                  stroke="#3b82f6" 
+                  strokeWidth={2} 
+                  name="Storms" 
+                  style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }}
+                  onClick={!zoomEnabled ? (data) => handleChartClick({ activePayload: [{ payload: data }] }, 'date') : undefined}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="floods" 
+                  stroke="#06b6d4" 
+                  strokeWidth={2} 
+                  name="Floods" 
+                  style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }}
+                  onClick={!zoomEnabled ? (data) => handleChartClick({ activePayload: [{ payload: data }] }, 'date') : undefined}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="wildfires" 
+                  stroke="#dc2626" 
+                  strokeWidth={2} 
+                  name="Wildfires" 
+                  style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }}
+                  onClick={!zoomEnabled ? (data) => handleChartClick({ activePayload: [{ payload: data }] }, 'date') : undefined}
+                />
                 {refAreaLeft && refAreaRight && (
                   <rect
                     x={0}
@@ -330,7 +375,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
       case 'source':
         return (
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={sourceData} layout="vertical" margin={{ left: 20 }} onClick={(data) => handleChartClick(data, 'source')}>
+            <BarChart data={sourceData} layout="vertical" margin={{ left: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis 
                 type="number" 
@@ -355,6 +400,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                 radius={[0, 8, 8, 0]}
                 minPointSize={3}
                 style={{ cursor: 'pointer' }}
+                onClick={(data) => handleChartClick({ activePayload: [{ payload: data }] }, 'source')}
               />
             </BarChart>
           </ResponsiveContainer>

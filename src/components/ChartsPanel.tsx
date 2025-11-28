@@ -48,6 +48,10 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
     drilldownType: 'type',
     drilldownValue: '',
   });
+  const [zoomEnabled, setZoomEnabled] = useState(false);
+  const [refAreaLeft, setRefAreaLeft] = useState<string>('');
+  const [refAreaRight, setRefAreaRight] = useState<string>('');
+  const [zoomDomain, setZoomDomain] = useState<{ left: number; right: number } | null>(null);
 
   // Map time range to days
   const getDaysFromRange = (range: TimeRange): number => {
@@ -117,6 +121,39 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
 
   const closeDrilldown = () => {
     setDrilldownData(prev => ({ ...prev, isOpen: false }));
+  };
+
+  // Zoom and pan handlers for timeline chart
+  const handleZoomIn = () => {
+    if (!refAreaLeft || !refAreaRight) return;
+    
+    const left = new Date(refAreaLeft).getTime();
+    const right = new Date(refAreaRight).getTime();
+    
+    if (left === right || right < left) {
+      setRefAreaLeft('');
+      setRefAreaRight('');
+      return;
+    }
+    
+    setZoomDomain({ left, right });
+    setRefAreaLeft('');
+    setRefAreaRight('');
+  };
+
+  const handleZoomOut = () => {
+    setZoomDomain(null);
+    setRefAreaLeft('');
+    setRefAreaRight('');
+  };
+
+  const getZoomedData = () => {
+    if (!zoomDomain) return timelineData;
+    
+    return timelineData.filter(item => {
+      const time = new Date(item.date).getTime();
+      return time >= zoomDomain.left && time <= zoomDomain.right;
+    });
   };
 
   const renderChart = () => {
@@ -223,13 +260,46 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                 All Time
               </button>
             </div>
+            <div className="zoom-controls">
+              <button
+                className={`zoom-btn ${zoomEnabled ? 'active' : ''}`}
+                onClick={() => setZoomEnabled(!zoomEnabled)}
+                title={zoomEnabled ? 'Disable zoom (click to pan/zoom)' : 'Enable zoom (drag to select area)'}
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                </svg>
+                {zoomEnabled ? 'Zoom Enabled' : 'Enable Zoom'}
+              </button>
+              {zoomDomain && (
+                <button
+                  className="zoom-btn zoom-out-btn"
+                  onClick={handleZoomOut}
+                  title="Reset zoom"
+                >
+                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                  </svg>
+                  Reset Zoom
+                </button>
+              )}
+            </div>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={timelineData} onClick={(data) => handleChartClick(data, 'date')}>
+              <LineChart
+                data={getZoomedData()}
+                onClick={!zoomEnabled ? (data) => handleChartClick(data, 'date') : undefined}
+                onMouseDown={zoomEnabled ? (e: any) => e?.activeLabel && setRefAreaLeft(e.activeLabel) : undefined}
+                onMouseMove={zoomEnabled ? (e: any) => refAreaLeft && e?.activeLabel && setRefAreaRight(e.activeLabel) : undefined}
+                onMouseUp={zoomEnabled ? handleZoomIn : undefined}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis
                   dataKey="date"
                   stroke="#9ca3af"
                   tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  domain={zoomDomain ? [zoomDomain.left, zoomDomain.right] : undefined}
+                  type={zoomDomain ? 'number' : 'category'}
+                  scale={zoomDomain ? 'time' : undefined}
                 />
                 <YAxis stroke="#9ca3af" />
                 <Tooltip
@@ -237,11 +307,21 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                   cursor={{ stroke: '#60a5fa', strokeWidth: 2 }}
                 />
                 <Legend />
-                <Line type="monotone" dataKey="earthquakes" stroke="#ef4444" strokeWidth={2} name="Earthquakes" style={{ cursor: 'pointer' }} />
-                <Line type="monotone" dataKey="volcanoes" stroke="#f97316" strokeWidth={2} name="Volcanoes" style={{ cursor: 'pointer' }} />
-                <Line type="monotone" dataKey="storms" stroke="#3b82f6" strokeWidth={2} name="Storms" style={{ cursor: 'pointer' }} />
-                <Line type="monotone" dataKey="floods" stroke="#06b6d4" strokeWidth={2} name="Floods" style={{ cursor: 'pointer' }} />
-                <Line type="monotone" dataKey="wildfires" stroke="#dc2626" strokeWidth={2} name="Wildfires" style={{ cursor: 'pointer' }} />
+                <Line type="monotone" dataKey="earthquakes" stroke="#ef4444" strokeWidth={2} name="Earthquakes" style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }} />
+                <Line type="monotone" dataKey="volcanoes" stroke="#f97316" strokeWidth={2} name="Volcanoes" style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }} />
+                <Line type="monotone" dataKey="storms" stroke="#3b82f6" strokeWidth={2} name="Storms" style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }} />
+                <Line type="monotone" dataKey="floods" stroke="#06b6d4" strokeWidth={2} name="Floods" style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }} />
+                <Line type="monotone" dataKey="wildfires" stroke="#dc2626" strokeWidth={2} name="Wildfires" style={{ cursor: zoomEnabled ? 'crosshair' : 'pointer' }} />
+                {refAreaLeft && refAreaRight && (
+                  <rect
+                    x={0}
+                    y={0}
+                    width="100%"
+                    height="100%"
+                    fill="rgba(59, 130, 246, 0.2)"
+                    fillOpacity={0.3}
+                  />
+                )}
               </LineChart>
             </ResponsiveContainer>
           </>

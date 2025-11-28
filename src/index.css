@@ -2353,3 +2353,67 @@ textarea.form-input {
   border-radius: 2px;
   flex-shrink: 0;
 }
+
+/* Zoom Controls */
+.zoom-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 0 8px;
+}
+
+.zoom-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(31, 41, 55, 0.6);
+  border: 1px solid #374151;
+  border-radius: 8px;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.zoom-btn:hover {
+  background: rgba(31, 41, 55, 0.9);
+  border-color: #60a5fa;
+  color: #e5e7eb;
+  transform: translateY(-1px);
+}
+
+.zoom-btn.active {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-color: #3b82f6;
+  color: white;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+
+.zoom-btn svg {
+  flex-shrink: 0;
+}
+
+.zoom-out-btn {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.zoom-out-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #fef2f2;
+}
+
+@media (max-width: 768px) {
+  .zoom-controls {
+    flex-direction: column;
+  }
+
+  .zoom-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

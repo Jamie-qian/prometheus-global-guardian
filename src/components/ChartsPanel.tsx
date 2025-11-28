@@ -16,6 +16,7 @@ import {
 } from 'recharts';
 import type { Hazard } from '../types';
 import ChartDrilldownModal from './ChartDrilldownModal';
+import CustomChartTooltip from './CustomChartTooltip';
 import {
   getTypeDistribution,
   getSeverityDistribution,
@@ -159,23 +160,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{
-                  background: '#1f2937',
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#e5e7eb'
-                }}
-                itemStyle={{
-                  color: '#e5e7eb'
-                }}
-                labelStyle={{
-                  color: '#f3f4f6',
-                  fontWeight: '600'
-                }}
-                formatter={(value: any, name: string, props: any) => [
-                  `${value} (${props.payload.percentage}%) - Click to view details`,
-                  name.replace(/_/g, ' ')
-                ]}
+                content={<CustomChartTooltip chartType="type" totalHazards={hazards.length} />}
               />
               <Legend
                 verticalAlign="bottom"
@@ -197,13 +182,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
               <XAxis dataKey="severity" stroke="#9ca3af" />
               <YAxis stroke="#9ca3af" />
               <Tooltip
-                contentStyle={{
-                  background: '#1f2937',
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#fff'
-                }}
-                formatter={(value: any) => [`${value} - Click to view details`, 'Count']}
+                content={<CustomChartTooltip chartType="severity" totalHazards={hazards.length} />}
                 cursor={{ fill: 'rgba(96, 165, 250, 0.1)' }}
               />
               <Bar dataKey="count" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
@@ -254,20 +233,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                 />
                 <YAxis stroke="#9ca3af" />
                 <Tooltip
-                  contentStyle={{
-                    background: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                    color: '#e5e7eb'
-                  }}
-                  itemStyle={{
-                    color: '#e5e7eb'
-                  }}
-                  labelStyle={{
-                    color: '#f3f4f6',
-                    fontWeight: '600'
-                  }}
-                  labelFormatter={(value) => `${new Date(value).toLocaleDateString()} - Click to view details`}
+                  content={<CustomChartTooltip chartType="timeline" totalHazards={hazards.length} />}
                   cursor={{ stroke: '#60a5fa', strokeWidth: 2 }}
                 />
                 <Legend />
@@ -300,20 +266,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                 tick={{ fontSize: 12 }}
               />
               <Tooltip
-                contentStyle={{
-                  background: '#1f2937',
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#e5e7eb'
-                }}
-                itemStyle={{
-                  color: '#e5e7eb'
-                }}
-                labelStyle={{
-                  color: '#f3f4f6',
-                  fontWeight: '600'
-                }}
-                formatter={(value: any) => [`${value} - Click to view details`, 'Count']}
+                content={<CustomChartTooltip chartType="source" totalHazards={hazards.length} />}
                 cursor={{ fill: 'rgba(96, 165, 250, 0.1)' }}
               />
               <Bar 

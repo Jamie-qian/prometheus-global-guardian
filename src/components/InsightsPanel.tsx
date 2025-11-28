@@ -317,16 +317,16 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ hazards }) => {
         </button>
       </div>
 
-        {showPredictions && (
-          <>
-            <div className="insight-section prediction-section">
-              <h4>
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                Trend Predictions ({predictions.nextPeriod})
-              </h4>
-              <div className="prediction-overview">
+      {showPredictions && (
+        <>
+          <div className="insight-section prediction-section">
+            <h4>
+              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Trend Predictions ({predictions.nextPeriod})
+            </h4>
+            <div className="prediction-overview">
                 <div className="prediction-summary">
                   <span className="prediction-label">Overall Risk:</span>
                   <span className={`prediction-risk risk-${predictions.overallRisk}`}>
@@ -337,9 +337,9 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ hazards }) => {
                   <span className="prediction-label">Expected Total:</span>
                   <span className="prediction-value">{predictions.totalPredicted} events</span>
                 </div>
-              </div>
+            </div>
 
-              <div className="predictions-list">
+            <div className="predictions-list">
                 {predictions.predictions.map((pred, i) => (
                   <div key={i} className="prediction-item">
                     <div className="prediction-header">
@@ -365,18 +365,18 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ hazards }) => {
                       💡 {pred.recommendation}
                     </div>
                   </div>
-                ))}
-              </div>
+              ))}
             </div>
+          </div>
 
-            <div className="insight-section forecast-section">
-              <h4>
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                7-Day Forecast
-              </h4>
-              <div className="forecast-list">
+          <div className="insight-section forecast-section">
+            <h4>
+              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              7-Day Forecast
+            </h4>
+            <div className="forecast-list">
                 {forecast.map((day, i) => (
                   <div key={i} className="forecast-item">
                     <span className="forecast-date">
@@ -398,15 +398,14 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ hazards }) => {
                     <span className="forecast-value">{day.predicted}</span>
                     <span className="forecast-confidence">{day.confidence}%</span>
                   </div>
-                ))}
-              </div>
-              <div className="forecast-note">
-                ℹ️ Predictions based on 30-day historical trends. Confidence decreases for distant forecasts.
-              </div>
+              ))}
             </div>
-          </>
-        )}
-      </div>
+            <div className="forecast-note">
+              ℹ️ Predictions based on 30-day historical trends. Confidence decreases for distant forecasts.
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

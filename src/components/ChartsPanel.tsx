@@ -15,6 +15,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import type { Hazard } from '../types';
+import ChartDrilldownModal from './ChartDrilldownModal';
 import {
   getTypeDistribution,
   getSeverityDistribution,
@@ -33,6 +34,19 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
   const [selectedChart, setSelectedChart] = useState<ChartType>('type');
   const [isExpanded, setIsExpanded] = useState(true);
   const [timeRange, setTimeRange] = useState<TimeRange>('7d');
+  const [drilldownData, setDrilldownData] = useState<{
+    isOpen: boolean;
+    title: string;
+    filteredHazards: Hazard[];
+    drilldownType: 'type' | 'severity' | 'source' | 'date';
+    drilldownValue: string;
+  }>({
+    isOpen: false,
+    title: '',
+    filteredHazards: [],
+    drilldownType: 'type',
+    drilldownValue: '',
+  });
 
   // Map time range to days
   const getDaysFromRange = (range: TimeRange): number => {
@@ -51,6 +65,59 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
   const timelineData = useMemo(() => getTimeSeriesData(hazards, getDaysFromRange(timeRange)), [hazards, timeRange]);
   const sourceData = useMemo(() => getSourceDistribution(hazards), [hazards]);
 
+  // Handle chart click for drill-down
+  const handleChartClick = (data: any, drilldownType: 'type' | 'severity' | 'source' | 'date') => {
+    if (!data || !data.activePayload?.[0]) return;
+
+    const payload = data.activePayload[0].payload;
+    let filteredHazards: Hazard[] = [];
+    let title = '';
+    let drilldownValue = '';
+
+    switch (drilldownType) {
+      case 'type':
+        drilldownValue = payload.type;
+        filteredHazards = hazards.filter(h => h.type === payload.type);
+        title = `${payload.type.replace(/_/g, ' ')} Hazards`;
+        break;
+      case 'severity':
+        drilldownValue = payload.severity;
+        filteredHazards = hazards.filter(h => h.severity === payload.severity);
+        title = `${payload.severity} Severity Hazards`;
+        break;
+      case 'source':
+        drilldownValue = payload.source;
+        filteredHazards = hazards.filter(h => h.source === payload.source);
+        title = `Hazards from ${payload.source}`;
+        break;
+      case 'date':
+        drilldownValue = new Date(payload.date).toLocaleDateString();
+        const targetDate = new Date(payload.date).toDateString();
+        filteredHazards = hazards.filter(h => {
+          try {
+            if (!h.timestamp) return false;
+            return new Date(h.timestamp).toDateString() === targetDate;
+          } catch {
+            return false;
+          }
+        });
+        title = `Hazards on ${drilldownValue}`;
+        break;
+    }
+
+    setDrilldownData({
+      isOpen: true,
+      title,
+      filteredHazards,
+      drilldownType,
+      drilldownValue,
+    });
+  };
+
+  const closeDrilldown = () => {
+    setDrilldownData(prev => ({ ...prev, isOpen: false }));
+  };
+
   const renderChart = () => {
     if (hazards.length === 0) {
       return (
@@ -64,7 +131,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
       case 'type':
         return (
           <ResponsiveContainer width="100%" height={400}>
-            <PieChart>
+            <PieChart onClick={(data) => handleChartClick(data, 'type')}>
               <Pie
                 data={typeData as any}
                 dataKey="count"
@@ -85,6 +152,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                   stroke: '#9ca3af',
                   strokeWidth: 1
                 }}
+                style={{ cursor: 'pointer' }}
               >
                 {typeData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
@@ -105,7 +173,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                   fontWeight: '600'
                 }}
                 formatter={(value: any, name: string, props: any) => [
-                  `${value} (${props.payload.percentage}%)`,
+                  `${value} (${props.payload.percentage}%) - Click to view details`,
                   name.replace(/_/g, ' ')
                 ]}
               />
@@ -124,7 +192,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
       case 'severity':
         return (
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={severityData}>
+            <BarChart data={severityData} onClick={(data) => handleChartClick(data, 'severity')}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="severity" stroke="#9ca3af" />
               <YAxis stroke="#9ca3af" />
@@ -135,8 +203,10 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                   borderRadius: '8px',
                   color: '#fff'
                 }}
+                formatter={(value: any) => [`${value} - Click to view details`, 'Count']}
+                cursor={{ fill: 'rgba(96, 165, 250, 0.1)' }}
               />
-              <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+              <Bar dataKey="count" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
                 {severityData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
@@ -175,7 +245,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
               </button>
             </div>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={timelineData}>
+              <LineChart data={timelineData} onClick={(data) => handleChartClick(data, 'date')}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis
                   dataKey="date"
@@ -197,14 +267,15 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                     color: '#f3f4f6',
                     fontWeight: '600'
                   }}
-                  labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                  labelFormatter={(value) => `${new Date(value).toLocaleDateString()} - Click to view details`}
+                  cursor={{ stroke: '#60a5fa', strokeWidth: 2 }}
                 />
                 <Legend />
-                <Line type="monotone" dataKey="earthquakes" stroke="#ef4444" strokeWidth={2} name="Earthquakes" />
-                <Line type="monotone" dataKey="volcanoes" stroke="#f97316" strokeWidth={2} name="Volcanoes" />
-                <Line type="monotone" dataKey="storms" stroke="#3b82f6" strokeWidth={2} name="Storms" />
-                <Line type="monotone" dataKey="floods" stroke="#06b6d4" strokeWidth={2} name="Floods" />
-                <Line type="monotone" dataKey="wildfires" stroke="#dc2626" strokeWidth={2} name="Wildfires" />
+                <Line type="monotone" dataKey="earthquakes" stroke="#ef4444" strokeWidth={2} name="Earthquakes" style={{ cursor: 'pointer' }} />
+                <Line type="monotone" dataKey="volcanoes" stroke="#f97316" strokeWidth={2} name="Volcanoes" style={{ cursor: 'pointer' }} />
+                <Line type="monotone" dataKey="storms" stroke="#3b82f6" strokeWidth={2} name="Storms" style={{ cursor: 'pointer' }} />
+                <Line type="monotone" dataKey="floods" stroke="#06b6d4" strokeWidth={2} name="Floods" style={{ cursor: 'pointer' }} />
+                <Line type="monotone" dataKey="wildfires" stroke="#dc2626" strokeWidth={2} name="Wildfires" style={{ cursor: 'pointer' }} />
               </LineChart>
             </ResponsiveContainer>
           </>
@@ -213,7 +284,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
       case 'source':
         return (
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={sourceData} layout="vertical" margin={{ left: 20 }}>
+            <BarChart data={sourceData} layout="vertical" margin={{ left: 20 }} onClick={(data) => handleChartClick(data, 'source')}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis 
                 type="number" 
@@ -242,7 +313,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                   color: '#f3f4f6',
                   fontWeight: '600'
                 }}
-                formatter={(value: any) => [`${value}`, 'Count']}
+                formatter={(value: any) => [`${value} - Click to view details`, 'Count']}
                 cursor={{ fill: 'rgba(96, 165, 250, 0.1)' }}
               />
               <Bar 
@@ -250,6 +321,7 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
                 fill="#60a5fa" 
                 radius={[0, 8, 8, 0]}
                 minPointSize={3}
+                style={{ cursor: 'pointer' }}
               />
             </BarChart>
           </ResponsiveContainer>
@@ -330,8 +402,17 @@ const ChartsPanel: React.FC<ChartsPanelProps> = ({ hazards }) => {
       </div>
 
       <div className="chart-info">
-        <p>Total: {hazards.length} hazards | Updated: {new Date().toLocaleTimeString()}</p>
+        <p>Total: {hazards.length} hazards | Updated: {new Date().toLocaleTimeString()} | 💡 Click on chart elements for details</p>
       </div>
+
+      <ChartDrilldownModal
+        isOpen={drilldownData.isOpen}
+        onClose={closeDrilldown}
+        title={drilldownData.title}
+        filteredHazards={drilldownData.filteredHazards}
+        drilldownType={drilldownData.drilldownType}
+        drilldownValue={drilldownData.drilldownValue}
+      />
     </div>
   );
 };

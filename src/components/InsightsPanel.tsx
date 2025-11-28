@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Hazard } from '../types';
 import {
   calculateRiskScore,
@@ -12,12 +12,15 @@ import {
   analyzeGeographicCorrelation,
   getCorrelationInsights 
 } from '../utils/correlationAnalysis';
+import { predictHazardTrends, generateForecast } from '../utils/predictions';
 
 interface InsightsPanelProps {
   hazards: Hazard[];
 }
 
 const InsightsPanel: React.FC<InsightsPanelProps> = ({ hazards }) => {
+  const [showPredictions, setShowPredictions] = useState(false);
+  
   const riskScore = calculateRiskScore(hazards);
   const clusters = clusterHazards(hazards, 500).slice(0, 3); // Top 3 clusters
   const highRiskRegions = getHighRiskRegions(hazards).slice(0, 3); // Top 3 regions
@@ -29,6 +32,10 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ hazards }) => {
   const typeSeverityCorr = analyzeTypeSeverityCorrelation(hazards).slice(0, 3);
   const geographicCorr = analyzeGeographicCorrelation(hazards).slice(0, 3);
   const correlationInsights = getCorrelationInsights(hazards);
+  
+  // Predictive analysis
+  const predictions = predictHazardTrends(hazards, 30);
+  const forecast = generateForecast(hazards, 7);
 
   const getRiskColor = (level: string) => {
     switch (level) {
@@ -296,6 +303,108 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ hazards }) => {
             ))}
           </div>
         </div>
+
+        <div className="prediction-toggle-section">
+          <button 
+            className={`prediction-toggle-btn ${showPredictions ? 'active' : ''}`}
+            onClick={() => setShowPredictions(!showPredictions)}
+          >
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+            {showPredictions ? 'Hide' : 'Show'} Predictive Analysis
+          </button>
+        </div>
+
+        {showPredictions && (
+          <>
+            <div className="insight-section prediction-section">
+              <h4>
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Trend Predictions ({predictions.nextPeriod})
+              </h4>
+              <div className="prediction-overview">
+                <div className="prediction-summary">
+                  <span className="prediction-label">Overall Risk:</span>
+                  <span className={`prediction-risk risk-${predictions.overallRisk}`}>
+                    {predictions.overallRisk.toUpperCase()}
+                  </span>
+                </div>
+                <div className="prediction-summary">
+                  <span className="prediction-label">Expected Total:</span>
+                  <span className="prediction-value">{predictions.totalPredicted} events</span>
+                </div>
+              </div>
+
+              <div className="predictions-list">
+                {predictions.predictions.map((pred, i) => (
+                  <div key={i} className="prediction-item">
+                    <div className="prediction-header">
+                      <span className="prediction-type">{pred.type}</span>
+                      <span className={`prediction-trend trend-${pred.currentTrend}`}>
+                        {pred.currentTrend === 'increasing' && '📈'}
+                        {pred.currentTrend === 'decreasing' && '📉'}
+                        {pred.currentTrend === 'stable' && '➡️'}
+                        {pred.trendPercentage > 0 ? '+' : ''}{pred.trendPercentage}%
+                      </span>
+                    </div>
+                    <div className="prediction-details">
+                      <div className="prediction-metric">
+                        <span className="metric-label">Predicted:</span>
+                        <span className="metric-value">{pred.predictedCount} events</span>
+                      </div>
+                      <div className="prediction-metric">
+                        <span className="metric-label">Confidence:</span>
+                        <span className="metric-value">{pred.confidence}%</span>
+                      </div>
+                    </div>
+                    <div className="prediction-recommendation">
+                      💡 {pred.recommendation}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="insight-section forecast-section">
+              <h4>
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                7-Day Forecast
+              </h4>
+              <div className="forecast-list">
+                {forecast.map((day, i) => (
+                  <div key={i} className="forecast-item">
+                    <span className="forecast-date">
+                      {new Date(day.date).toLocaleDateString('en-US', { 
+                        weekday: 'short',
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </span>
+                    <div className="forecast-bar-container">
+                      <div 
+                        className="forecast-bar"
+                        style={{ 
+                          width: `${Math.min(100, (day.predicted / Math.max(...forecast.map(f => f.predicted))) * 100)}%`,
+                          opacity: day.confidence / 100
+                        }}
+                      />
+                    </div>
+                    <span className="forecast-value">{day.predicted}</span>
+                    <span className="forecast-confidence">{day.confidence}%</span>
+                  </div>
+                ))}
+              </div>
+              <div className="forecast-note">
+                ℹ️ Predictions based on 30-day historical trends. Confidence decreases for distant forecasts.
+              </div>
+            </div>
+          </>
+        )}
       )}
     </div>
   );

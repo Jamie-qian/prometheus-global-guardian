@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { fetchHazardTypes } from "../api/disasteraware";
+import { checkHealth } from "../api/pythonAnalytics";
 import type { HazardType } from "../types";
 import DISPLAYED_TYPES from "../config/displayedTypes";
 
@@ -18,6 +19,7 @@ const StatusPanel: React.FC<StatusPanelProps> = ({
 }) => {
   const [hazardTypes, setHazardTypes] = useState<HazardType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [pythonServiceOnline, setPythonServiceOnline] = useState(false);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -37,7 +39,15 @@ const StatusPanel: React.FC<StatusPanelProps> = ({
 
   useEffect(() => {
     fetchData();
+    checkPythonService();
+    const interval = setInterval(checkPythonService, 10000); // 每10秒检查一次
+    return () => clearInterval(interval);
   }, []);
+
+  const checkPythonService = async () => {
+    const isOnline = await checkHealth();
+    setPythonServiceOnline(isOnline);
+  };
 
   return (
     <div className="status-panel">

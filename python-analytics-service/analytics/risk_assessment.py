@@ -10,11 +10,36 @@ from typing import Dict, List, Any
 import logging
 from datetime import datetime, timedelta
 
+def clean_for_json(obj):
+    """清理数据中的NaN和Infinity值，使其可以被JSON序列化"""
+    if isinstance(obj, dict):
+        return {k: clean_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_for_json(item) for item in obj]
+    elif isinstance(obj, float):
+        if np.isnan(obj) or np.isinf(obj):
+            return None
+        return obj
+    elif isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        if np.isnan(obj) or np.isinf(obj):
+            return None
+        return float(obj)
+    return obj
+
 class RiskAssessor:
-    """风险评估器"""
+    """风险评估器
+    
+    优化特性：
+    - 动态权重调整
+    - 性能监控
+    - 更细粒度的风险分级
+    """
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+        # 优化：可配置的风险权重
         self.risk_weights = {
             'EARTHQUAKE': 0.25,
             'VOLCANO': 0.15,
@@ -22,10 +47,42 @@ class RiskAssessor:
             'FLOOD': 0.20,
             'WILDFIRE': 0.15
         }
+        # 优化：更细粒度的严重性权重
+        self.severity_weights = {
+            'CRITICAL': 2.0,
+            'HIGH': 1.5,
+            'MODERATE': 1.0,
+            'LOW': 0.5,
+            'MINIMAL': 0.2
+        }
+    
+    def _validate_dataframe(self, df: pd.DataFrame) -> bool:
+        """验证数据框的有效性"""
+        if df is None or len(df) == 0:
+            self.logger.warning("Empty dataframe for risk assessment")
+            return False
+        
+        if 'type' not in df.columns:
+            self.logger.error("Missing 'type' column in dataframe")
+            return False
+        
+        return True
         
     def calculate_comprehensive_risk(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """计算综合风险评估"""
+        """计算综合风险评估
+        
+        优化：
+        - 数据验证
+        - 性能监控
+        - 更好的错误处理
+        """
+        start_time = datetime.now()
+        
         try:
+            # 数据验证
+            if not self._validate_dataframe(df):
+                raise ValueError("Invalid dataframe for risk assessment")
+            
             risk_results = {
                 "overallRiskScore": self._calculate_overall_risk(df),
                 "typeRisks": self._calculate_type_risks(df),
@@ -35,10 +92,14 @@ class RiskAssessor:
                 "recommendations": self._generate_recommendations(df)
             }
             
-            return risk_results
+            elapsed = (datetime.now() - start_time).total_seconds()
+            self.logger.info(f"Risk assessment completed in {elapsed:.3f}s for {len(df)} records")
+            
+            # 清理所有NaN和Infinity值
+            return clean_for_json(risk_results)
             
         except Exception as e:
-            self.logger.error(f"Risk assessment failed: {e}")
+            self.logger.error(f"Risk assessment failed: {e}", exc_info=True)
             raise
     
     def _calculate_overall_risk(self, df: pd.DataFrame) -> Dict[str, Any]:

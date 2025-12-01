@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { generateEnhancedReport, downloadReport } from "../utils/reportGenerator";
 
 interface SaveReportModalProps {
   isOpen: boolean;
@@ -33,27 +32,28 @@ const SaveReportModal: React.FC<SaveReportModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const reportHTML = generateEnhancedReport({
+    // 简化版报告生成 - Python微服务处理复杂分析
+    const reportData = {
       reportName,
       organization,
       email,
       notes,
       disasters,
-      filter
-    });
+      filter,
+      timestamp: new Date().toISOString()
+    };
     
-    const filename = `${reportName.replace(/[^a-z0-9]/gi, "_")}_${Date.now()}`;
-    downloadReport(reportHTML, filename);
+    // 下载JSON格式报告
+    const dataStr = JSON.stringify(reportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${reportName.replace(/[^a-z0-9]/gi, "_")}_${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
     
-    onDownload({
-      reportName,
-      organization,
-      email,
-      notes,
-      disasters,
-      filter
-    });
-    
+    onDownload(reportData);
     onClose();
   };
 

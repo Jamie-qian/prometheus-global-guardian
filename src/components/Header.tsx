@@ -1,4 +1,5 @@
 import React from "react";
+import NotificationCenter from "./NotificationCenter";
 
 interface HeaderProps {
   onOpenSaveModal: () => void;
@@ -95,6 +96,8 @@ const Header: React.FC<HeaderProps> = ({
             </svg>
             <span>Settings</span>
           </button>
+
+          <NotificationCenter />
         </div>
       </div>
     </header>

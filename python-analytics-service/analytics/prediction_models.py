@@ -15,15 +15,51 @@ import logging
 from datetime import datetime, timedelta
 
 class PredictionEngine:
-    """预测引擎 - 实现5个独立灾害预测模型"""
+    """预测引擎 - 实现5个独立灾害预测模型
+    
+    优化特性：
+    - 数据验证和清洗
+    - 更好的错误处理
+    - 性能监控
+    - 模型参数优化
+    """
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.models = {}
+        self.min_data_points = 5  # 最小数据点需求
+        self.prediction_window = 7  # 预测7天
+    
+    def _validate_dataframe(self, df: pd.DataFrame, hazard_type: str = None) -> bool:
+        """验证数据框的有效性"""
+        if df is None or len(df) == 0:
+            self.logger.warning(f"Empty dataframe for {hazard_type or 'unknown'} prediction")
+            return False
+        
+        required_columns = ['type', 'timestamp']
+        missing_cols = [col for col in required_columns if col not in df.columns]
+        if missing_cols:
+            self.logger.error(f"Missing required columns: {missing_cols}")
+            return False
+        
+        return True
         
     def generate_predictions(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """生成所有类型的预测结果"""
+        """生成所有类型的预测结果
+        
+        优化：
+        - 数据验证
+        - 性能监控
+        - 异常处理
+        """
+        start_time = datetime.now()
+        
         try:
+            # 数据验证
+            if not self._validate_dataframe(df):
+                raise ValueError("Invalid dataframe for predictions")
+            
+            # 并行生成所有预测（可以考虑使用ThreadPoolExecutor）
             predictions = {
                 "earthquakePrediction": self._earthquake_prediction_model(df),
                 "volcanoPrediction": self._volcano_prediction_model(df),
@@ -32,9 +68,14 @@ class PredictionEngine:
                 "wildfirePrediction": self._wildfire_prediction_model(df),
                 "overallRiskAssessment": self._aggregate_risk_assessment(df)
             }
+            
+            elapsed = (datetime.now() - start_time).total_seconds()
+            self.logger.info(f"Predictions generated in {elapsed:.3f}s for {len(df)} records")
+            
             return predictions
+            
         except Exception as e:
-            self.logger.error(f"Prediction generation failed: {e}")
+            self.logger.error(f"Prediction generation failed: {e}", exc_info=True)
             raise
     
     def _prepare_time_series_data(self, df: pd.DataFrame, hazard_type: str, 

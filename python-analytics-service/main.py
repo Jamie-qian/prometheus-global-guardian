@@ -42,13 +42,13 @@ app.add_middleware(
 # 数据模型定义
 class HazardData(BaseModel):
     id: str
-    type: str
-    title: str
-    coordinates: List[float]
+    type: str = "unknown"
+    title: str = "Unknown Event"
+    coordinates: List[float] = [0.0, 0.0]
     timestamp: str
     magnitude: Optional[float] = None
     severity: Optional[str] = None
-    source: str
+    source: str = "DisasterAWARE"
     populationExposed: Optional[int] = None
 
 class AnalysisRequest(BaseModel):
@@ -156,16 +156,21 @@ async def etl_processing(request: AnalysisRequest):
     try:
         df = etl_processor.convert_to_dataframe([hazard.dict() for hazard in request.hazards])
         processed_data = etl_processor.process_data(df)
-        quality_metrics = etl_processor.assess_data_quality(df)
+        quality_metrics = etl_processor.assess_data_quality(processed_data)
+        
+        # 将NaN替换为None以便JSON序列化
+        processed_data_clean = processed_data.replace({np.nan: None})
         
         return {
             "success": True, 
             "data": {
-                "processedData": processed_data.to_dict('records'),
-                "qualityMetrics": quality_metrics
+                "processedData": processed_data_clean.to_dict('records'),
+                "qualityMetrics": quality_metrics,
+                "recordsProcessed": len(processed_data)
             }
         }
     except Exception as e:
+        logger.error(f"ETL processing error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/v1/risk-assessment")

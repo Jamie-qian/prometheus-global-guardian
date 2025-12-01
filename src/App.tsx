@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { authorize } from "./api/auth";
+import { notify } from "./utils/notifications";
 import Header from "./components/Header";
 import StatusPanel from "./components/StatusPanel";
 import LegendPanel from "./components/LegendPanel";
@@ -31,7 +32,16 @@ const App: React.FC = () => {
 
   // Handle updates from MapView
   const handleDisastersUpdate = (data: Hazard[]) => {
+    const previousCount = disasters.length;
     setDisasters(data);
+    
+    // 发送通知
+    if (data.length > previousCount) {
+      const newCount = data.length - previousCount;
+      notify.info('数据更新', `检测到 ${newCount} 条新灾害记录`);
+    } else if (data.length > 0 && previousCount === 0) {
+      notify.success('数据加载完成', `成功加载 ${data.length} 条灾害记录`);
+    }
   };
 
   const handleStyleChange = (style: string) => {
@@ -69,6 +79,7 @@ const App: React.FC = () => {
             <AnalyticsPage 
               hazards={disasters} 
               onClose={() => setIsAnalyticsOpen(false)}
+              onRefresh={handleDisastersUpdate}
             />
           </ErrorBoundary>
         ) : (

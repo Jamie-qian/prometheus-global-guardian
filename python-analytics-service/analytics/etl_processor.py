@@ -79,14 +79,21 @@ class ETLProcessor:
                 "timeliness": self._check_timeliness(df)
             }
             
-            # 计算总分
-            overall_score = np.mean(list(quality_checks.values())) * 100
+            # 计算总分，确保处理NaN
+            quality_values = [float(v) if not pd.isna(v) else 0.5 for v in quality_checks.values()]
+            overall_score = np.mean(quality_values) * 100
+            
+            # 将NaN转换为None以便JSON序列化
+            clean_quality_checks = {
+                k: (None if pd.isna(v) else float(v)) 
+                for k, v in quality_checks.items()
+            }
             
             return {
-                "overallScore": round(overall_score, 1),
+                "overallScore": float(round(overall_score, 1)) if not pd.isna(overall_score) else 0.0,
                 "targetScore": 99.8,  # 目标准确率
-                "detailChecks": quality_checks,
-                "totalRecords": total_records,
+                "detailChecks": clean_quality_checks,
+                "totalRecords": int(total_records),
                 "status": "excellent" if overall_score >= 98 else ("good" if overall_score >= 90 else "needs_improvement")
             }
             
@@ -99,11 +106,13 @@ class ETLProcessor:
         # magnitude缺失值用中位数填充
         if 'magnitude' in df.columns:
             median_magnitude = df['magnitude'].median()
-            df['magnitude'].fillna(median_magnitude, inplace=True)
+            if pd.isna(median_magnitude):
+                median_magnitude = 5.0  # 默认值
+            df['magnitude'] = df['magnitude'].fillna(median_magnitude)
         
         # severity缺失值用默认值
         if 'severity' in df.columns:
-            df['severity'].fillna('UNKNOWN', inplace=True)
+            df['severity'] = df['severity'].fillna('UNKNOWN')
         
         return df
     
@@ -178,15 +187,25 @@ class ETLProcessor:
         
         # 震级有效性（0-10）
         if 'magnitude' in df.columns:
-            valid_magnitude = df['magnitude'].between(0, 10, inclusive='both').sum()
-            validity_score *= (valid_magnitude / len(df[df['magnitude'].notna()]))
+            non_null_count = df['magnitude'].notna().sum()
+            if non_null_count > 0:
+                valid_magnitude = df['magnitude'].between(0, 10, inclusive='both').sum()
+                validity_score *= (valid_magnitude / non_null_count)
+            else:
+                validity_score = 0.5  # 如果没有数据，返回默认分数
         
-        return validity_score
+        return float(validity_score) if not pd.isna(validity_score) else 0.5
     
     def _check_timeliness(self, df: pd.DataFrame) -> float:
         """检查数据时效性"""
         if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
-            recent_data = df[df['timestamp'] > (datetime.now() - pd.Timedelta(days=90))]
-            return len(recent_data) / len(df) if len(df) > 0 else 0.0
+            try:
+                df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce', utc=True)
+                now_utc = pd.Timestamp.now(tz='UTC')
+                cutoff_date = now_utc - pd.Timedelta(days=90)
+                recent_data = df[df['timestamp'] > cutoff_date]
+                return float(len(recent_data) / len(df)) if len(df) > 0 else 0.0
+            except Exception as e:
+                logger.error(f"Timeliness check failed: {str(e)}")
+                return 0.5
         return 1.0

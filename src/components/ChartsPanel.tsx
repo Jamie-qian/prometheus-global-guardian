@@ -12,6 +12,8 @@ const ChartsPanel: React.FC<{ hazards: any[] }> = ({ hazards }) => {
   const [pythonStats, setPythonStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [activeChart, setActiveChart] = useState<'pie' | 'bar' | 'line' | 'area'>('pie');
+  const [chartError, setChartError] = useState<string>('');
+  const [autoRefresh, setAutoRefresh] = useState(false);
 
   const hazardsByType = hazards.reduce((acc, h) => {
     const type = h.type || h.properties?.type || '未分类';
@@ -61,18 +63,31 @@ const ChartsPanel: React.FC<{ hazards: any[] }> = ({ hazards }) => {
     if (hazards.length === 0) return;
     
     setLoading(true);
+    setChartError('');
     try {
       const result = await getStatistics(hazards.slice(0, 100));
       if (result.success) {
         setPythonStats(result.data);
+      } else {
+        setChartError('统计数据加载失败');
       }
     } catch (error) {
       console.error('Failed to load Python statistics:', error);
-      // 静默失败，不影响基础图表显示
+      setChartError((error as Error).message || '加载统计数据时出错');
     } finally {
       setLoading(false);
     }
   };
+  
+  // 自动刷新功能
+  useEffect(() => {
+    if (autoRefresh && hazards.length > 0) {
+      const interval = setInterval(() => {
+        loadPythonStats();
+      }, 30000); // 每30秒刷新一次
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh, hazards.length]);
 
   return (
     <div style={{ backgroundColor: '#1a1a1a', padding: '20px', borderRadius: '8px' }}>

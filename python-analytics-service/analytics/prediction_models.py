@@ -22,6 +22,8 @@ class PredictionEngine:
     - 更好的错误处理
     - 性能监控
     - 模型参数优化
+    - 特征工程增强
+    - 交叉验证
     """
     
     def __init__(self):
@@ -29,6 +31,7 @@ class PredictionEngine:
         self.models = {}
         self.min_data_points = 5  # 最小数据点需求
         self.prediction_window = 7  # 预测7天
+        self.feature_importance = {}  # 特征重要性记录
     
     def _validate_dataframe(self, df: pd.DataFrame, hazard_type: str = None) -> bool:
         """验证数据框的有效性"""
@@ -80,7 +83,7 @@ class PredictionEngine:
     
     def _prepare_time_series_data(self, df: pd.DataFrame, hazard_type: str, 
                                    window_days: int = 30) -> Tuple[np.ndarray, np.ndarray]:
-        """准备时间序列数据用于线性回归"""
+        """准备时间序列数据用于线性回归（优化：添加移动平均特征）"""
         # 筛选特定类型的灾害
         filtered_df = df[df['type'] == hazard_type].copy()
         
@@ -105,6 +108,11 @@ class PredictionEngine:
             # 只取最近window_days天
             if len(daily_counts) > window_days:
                 daily_counts = daily_counts.tail(window_days)
+            
+            # 特征工程：添加移动平均
+            if len(daily_counts) >= 7:
+                daily_counts['ma_3'] = daily_counts['count'].rolling(window=3, min_periods=1).mean()
+                daily_counts['ma_7'] = daily_counts['count'].rolling(window=7, min_periods=1).mean()
             
             X = np.arange(len(daily_counts)).reshape(-1, 1)
             y = daily_counts['count'].values

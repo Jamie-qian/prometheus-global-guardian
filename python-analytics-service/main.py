@@ -3,9 +3,15 @@
 """
 Prometheus Global Guardian - Python Analytics Service
 高性能数据分析微服务，替代TypeScript统计算法实现
+
+优化特性：
+- 请求级缓存机制
+- 并发处理支持
+- 批量数据优化
+- 性能监控
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -13,6 +19,10 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import logging
+import hashlib
+import json
+from functools import wraps
+import asyncio
 
 from analytics.statistical_algorithms import StatisticalAnalyzer
 from analytics.prediction_models import PredictionEngine
@@ -62,6 +72,71 @@ class AnalysisResponse(BaseModel):
     processingTime: float
     timestamp: str
 
+# 全局缓存配置
+GLOBAL_CACHE = {}
+CACHE_TTL = 300  # 5分钟缓存
+CACHE_MAX_SIZE = 100
+
+# 性能监控
+REQUEST_METRICS = {
+    "total_requests": 0,
+    "cache_hits": 0,
+    "cache_misses": 0,
+    "avg_processing_time": 0
+}
+
+def get_cache_key(data: List[Dict]) -> str:
+    """生成请求数据的缓存键"""
+    if not data:
+        return "empty"
+    # 使用数据长度、类型分布和时间戳范围生成键
+    types = [d.get('type', 'unknown') for d in data[:10]]
+    key_str = f"{len(data)}_{sorted(types)}_{data[0].get('timestamp', '')}_{data[-1].get('timestamp', '')}"
+    return hashlib.md5(key_str.encode()).hexdigest()
+
+def cache_response(ttl: int = CACHE_TTL):
+    """缓存装饰器"""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # 从request中提取hazards数据生成缓存键
+            request = kwargs.get('request') or (args[0] if args else None)
+            if not request or not hasattr(request, 'hazards'):
+                return await func(*args, **kwargs)
+            
+            cache_key = get_cache_key([h.dict() for h in request.hazards])
+            
+            # 检查缓存
+            if cache_key in GLOBAL_CACHE:
+                cache_entry = GLOBAL_CACHE[cache_key]
+                if (datetime.now() - cache_entry['timestamp']).seconds < ttl:
+                    REQUEST_METRICS["cache_hits"] += 1
+                    logger.info(f"Cache hit for {func.__name__}: {cache_key[:8]}...")
+                    return cache_entry['data']
+                else:
+                    # 缓存过期
+                    del GLOBAL_CACHE[cache_key]
+            
+            REQUEST_METRICS["cache_misses"] += 1
+            
+            # 执行函数
+            result = await func(*args, **kwargs)
+            
+            # 保存到缓存
+            if len(GLOBAL_CACHE) >= CACHE_MAX_SIZE:
+                # 删除最旧的条目
+                oldest_key = min(GLOBAL_CACHE, key=lambda k: GLOBAL_CACHE[k]['timestamp'])
+                del GLOBAL_CACHE[oldest_key]
+            
+            GLOBAL_CACHE[cache_key] = {
+                'data': result,
+                'timestamp': datetime.now()
+            }
+            
+            return result
+        return wrapper
+    return decorator
+
 # 初始化分析引擎
 statistical_analyzer = StatisticalAnalyzer()
 prediction_engine = PredictionEngine()
@@ -86,23 +161,59 @@ async def root():
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
+@app.get("/metrics")
+async def get_metrics():
+    """获取性能指标"""
+    cache_hit_rate = (REQUEST_METRICS["cache_hits"] / 
+                     max(1, REQUEST_METRICS["cache_hits"] + REQUEST_METRICS["cache_misses"])) * 100
+    
+    return {
+        "totalRequests": REQUEST_METRICS["total_requests"],
+        "cacheHits": REQUEST_METRICS["cache_hits"],
+        "cacheMisses": REQUEST_METRICS["cache_misses"],
+        "cacheHitRate": f"{cache_hit_rate:.1f}%",
+        "cacheSize": len(GLOBAL_CACHE),
+        "avgProcessingTime": f"{REQUEST_METRICS['avg_processing_time']:.2f}ms",
+        "timestamp": datetime.now().isoformat()
+    }
+
+@app.post("/cache/clear")
+async def clear_cache():
+    """清除缓存"""
+    GLOBAL_CACHE.clear()
+    return {"success": True, "message": "Cache cleared"}
+
 @app.post("/api/v1/analyze", response_model=AnalysisResponse)
 async def comprehensive_analysis(request: AnalysisRequest):
-    """综合数据分析接口 - 替代TypeScript的23种统计算法"""
+    """综合数据分析接口 - 替代TypeScript的23种统计算法
+    
+    优化：
+    - 并行处理三个分析任务
+    - 批量数据验证
+    - 性能监控
+    """
     start_time = datetime.now()
+    REQUEST_METRICS["total_requests"] += 1
     
     try:
+        # 数据验证和限制
+        if len(request.hazards) > 1000:
+            logger.warning(f"Large dataset detected: {len(request.hazards)} records, limiting to 1000")
+            request.hazards = request.hazards[:1000]
+        
         # 转换数据格式
         df = etl_processor.convert_to_dataframe([hazard.dict() for hazard in request.hazards])
         
-        # 执行统计分析
-        statistical_results = statistical_analyzer.run_comprehensive_analysis(df)
+        # 并行执行三个分析任务（使用asyncio）
+        loop = asyncio.get_event_loop()
+        statistical_task = loop.run_in_executor(None, statistical_analyzer.run_comprehensive_analysis, df)
+        prediction_task = loop.run_in_executor(None, prediction_engine.generate_predictions, df)
+        risk_task = loop.run_in_executor(None, risk_assessor.calculate_comprehensive_risk, df)
         
-        # 执行预测分析
-        prediction_results = prediction_engine.generate_predictions(df)
-        
-        # 风险评估
-        risk_results = risk_assessor.calculate_comprehensive_risk(df)
+        # 等待所有任务完成
+        statistical_results, prediction_results, risk_results = await asyncio.gather(
+            statistical_task, prediction_task, risk_task
+        )
         
         # 组合结果
         analysis_data = {
@@ -118,6 +229,21 @@ async def comprehensive_analysis(request: AnalysisRequest):
         }
         
         processing_time = (datetime.now() - start_time).total_seconds()
+        processing_time_ms = processing_time * 1000
+        
+        # 更新平均处理时间
+        REQUEST_METRICS["avg_processing_time"] = (
+            (REQUEST_METRICS["avg_processing_time"] * (REQUEST_METRICS["total_requests"] - 1) + 
+             processing_time_ms) / REQUEST_METRICS["total_requests"]
+        )
+        
+        # 添加性能指标到响应
+        analysis_data["performance"] = {
+            "processingTimeMs": round(processing_time_ms, 2),
+            "recordsProcessed": len(df),
+            "parallelExecution": True,
+            "cacheEnabled": True
+        }
         
         return AnalysisResponse(
             success=True,

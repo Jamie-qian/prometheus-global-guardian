@@ -182,22 +182,77 @@ class ETLProcessor:
         return 1.0
     
     def _check_validity(self, df: pd.DataFrame) -> float:
-        """检查数据有效性"""
-        validity_score = 1.0
+        """检查数据有效性（优化：更全面的验证）"""
+        validity_scores = []
         
         # 震级有效性（0-10）
         if 'magnitude' in df.columns:
             non_null_count = df['magnitude'].notna().sum()
             if non_null_count > 0:
                 valid_magnitude = df['magnitude'].between(0, 10, inclusive='both').sum()
-                validity_score *= (valid_magnitude / non_null_count)
+                validity_scores.append(valid_magnitude / non_null_count)
             else:
-                validity_score = 0.5  # 如果没有数据，返回默认分数
+                validity_scores.append(0.8)
         
-        return float(validity_score) if not pd.isna(validity_score) else 0.5
+        # 坐标有效性（经度-180到180，纬度-90到90）
+        if 'coordinates' in df.columns:
+            valid_coords = df['coordinates'].apply(
+                lambda x: isinstance(x, list) and len(x) >= 2 and 
+                         -180 <= x[0] <= 180 and -90 <= x[1] <= 90
+            ).sum()
+            validity_scores.append(valid_coords / len(df))
+        
+        # 时间戳有效性
+        if 'timestamp' in df.columns:
+            valid_timestamps = pd.to_datetime(df['timestamp'], errors='coerce').notna().sum()
+            validity_scores.append(valid_timestamps / len(df))
+        
+        # 类型有效性
+        if 'type' in df.columns:
+            valid_types = df['type'].notna().sum()
+            validity_scores.append(valid_types / len(df))
+        
+        # 计算平均分
+        final_score = np.mean(validity_scores) if validity_scores else 0.5
+        return float(final_score) if not pd.isna(final_score) else 0.5
     
     def _check_timeliness(self, df: pd.DataFrame) -> float:
-        """检查数据时效性"""
+        """检查数据时效性（优化：更准确的时效评分）"""
+        if 'timestamp' not in df.columns or len(df) == 0:
+            return 0.5
+        
+        try:
+            timestamps = pd.to_datetime(df['timestamp'], errors='coerce').dropna()
+            if len(timestamps) == 0:
+                return 0.3
+            
+            now = pd.Timestamp.now()
+            time_diffs = (now - timestamps).dt.total_seconds()
+            
+            # 根据时间差评分：
+            # 0-24小时：1.0
+            # 24-72小时：0.9
+            # 72小时-7天：0.8
+            # 7-30天：0.7
+            # >30天：0.6
+            scores = []
+            for diff in time_diffs:
+                hours = diff / 3600
+                if hours <= 24:
+                    scores.append(1.0)
+                elif hours <= 72:
+                    scores.append(0.9)
+                elif hours <= 168:  # 7天
+                    scores.append(0.8)
+                elif hours <= 720:  # 30天
+                    scores.append(0.7)
+                else:
+                    scores.append(0.6)
+            
+            return float(np.mean(scores))
+        except Exception as e:
+            self.logger.error(f"Timeliness check failed: {e}")
+            return 0.5
         if 'timestamp' in df.columns:
             try:
                 df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce', utc=True)

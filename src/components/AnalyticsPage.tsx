@@ -60,6 +60,11 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [retryCount, setRetryCount] = useState(0);
+  
+  // 数据缓存：避免重复分析相同数据
+  const [lastAnalyzedDataHash, setLastAnalyzedDataHash] = useState<string>('');
 
   // 优化：使用useMemo缓存灾害类型统计
   const hazardsByType = useMemo(() => {
@@ -76,33 +81,69 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose }) => {
   }, []);
 
   const checkServiceStatus = async () => {
-    const isOnline = await checkHealth();
-    setServiceStatus(isOnline ? 'online' : 'offline');
+    setServiceStatus('checking');
+    try {
+      const isOnline = await checkHealth();
+      setServiceStatus(isOnline ? 'online' : 'offline');
+      
+      if (isOnline) {
+        notify.success('服务就绪', 'Python分析服务已连接');
+      } else {
+        notify.error('服务离线', '无法连接到Python分析服务');
+      }
+    } catch (error) {
+      setServiceStatus('offline');
+      notify.error('连接失败', '检查服务状态失败');
+    }
   };
 
-  const runAnalysis = async () => {
+  const runAnalysis = async (isRetry = false) => {
     if (hazards.length === 0) {
       notify.warning('无数据', '没有数据可供分析');
       return;
     }
 
+    // 生成数据哈希值，避免重复分析
+    const dataHash = `${hazards.length}_${hazards[0]?.id || ''}_${hazards[hazards.length - 1]?.id || ''}`;
+    if (dataHash === lastAnalyzedDataHash && !isRetry) {
+      notify.info('使用缓存', '数据未变化，使用上次分析结果');
+      return;
+    }
+
     setLoading(true);
-    notify.info('开始分析', `正在运行综合分析，处理 ${Math.min(hazards.length, 100)} 条记录...`);
+    setErrorMessage('');
+    const dataSize = Math.min(hazards.length, 100);
+    notify.info('开始分析', `正在运行综合分析，处理 ${dataSize} 条记录...`);
     
     try {
       // 自动运行综合分析（统计+预测+风险）
+      const analysisData = hazards.slice(0, 100);
       const [statsResult, predResult, riskResult] = await Promise.all([
-        getStatistics(hazards.slice(0, 100)),
-        getPredictions(hazards.slice(0, 100)),
-        getRiskAssessment(hazards.slice(0, 100))
+        getStatistics(analysisData),
+        getPredictions(analysisData),
+        getRiskAssessment(analysisData)
       ]);
+      
       setStatistics(statsResult);
       setPredictions(predResult);
       setRiskAssessment(riskResult);
       setHasAnalyzed(true);
+      setLastAnalyzedDataHash(dataHash);
+      setRetryCount(0);
+      
       notify.success('分析完成', '综合分析成功完成！包含统计分析、预测模型和风险评估');
     } catch (error) {
-      notify.error('分析失败', (error as Error).message);
+      const errorMsg = (error as Error).message;
+      setErrorMessage(errorMsg);
+      
+      // 自动重试逻辑（最多3次）
+      if (retryCount < 3 && !isRetry) {
+        setRetryCount(prev => prev + 1);
+        notify.warning('分析失败', `正在重试... (第 ${retryCount + 1} 次)`);
+        setTimeout(() => runAnalysis(true), 2000 * (retryCount + 1)); // 指数退避
+      } else {
+        notify.error('分析失败', errorMsg);
+      }
     } finally {
       setLoading(false);
     }

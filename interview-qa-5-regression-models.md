@@ -50,13 +50,18 @@
 - **周期性捕获**：能捕捉到月度和周度的规律模式
 
 **技术实现**：
-```typescript
-// 每日自动更新滑动窗口
-const updateWindow = (currentDate: Date) => {
-  const windowStart = new Date(currentDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const windowEnd = currentDate;
-  return hazards.filter(h => h.timestamp >= windowStart && h.timestamp <= windowEnd);
-};
+```python
+# Pandas自动处理滑动窗口
+import pandas as pd
+from datetime import timedelta
+
+def update_window(df: pd.DataFrame, current_date: pd.Timestamp, window_days: int = 30):
+    """每日自动更新滑动窗口"""
+    window_start = current_date - timedelta(days=window_days)
+    window_end = current_date
+    
+    # Pandas高效时间过滤
+    return df[(df['timestamp'] >= window_start) & (df['timestamp'] <= window_end)]
 ```
 
 **实际效果**：这种动态更新机制让我们的预测模型能够快速适应最新的灾害活动模式，比如如果最近地震活动突然增加，模型会在几天内就反映这种变化，预测准确率比固定历史数据提升了15-20%。
@@ -73,10 +78,13 @@ const updateWindow = (currentDate: Date) => {
 **目标变量**：未来7天地震发生次数
 **输入特征**：过去30天地震活动的时间序列数据
 **算法实现**：
-```typescript
-// 基于最小二乘法的线性回归
-const earthquakeModel = linearRegression(timeSequence, earthquakeCounts);
-// 预测公式：y = 0.23x + 4.2 (R² = 0.84)
+```python
+# Scikit-learn一行实现线性回归
+from sklearn.linear_model import LinearRegression
+
+model = LinearRegression().fit(time_sequence.reshape(-1, 1), earthquake_counts)
+# 预测公式：y = 0.23x + 4.2 (R² = 0.84)
+r_squared = model.score(time_sequence.reshape(-1, 1), earthquake_counts)
 ```
 **业务价值**：预测震级≥4.0地震，准确率87.2%，为地震预警系统提供数据支撑
 

@@ -59,12 +59,21 @@
 ### 1. **并行提取架构设计**
 我们采用了**并行数据源提取**的架构，使用`Promise.allSettled`同时从三个数据源获取数据，而不是串行请求，这样将响应时间从9秒降低到3秒。
 
-```javascript
-const [usgs, nasa, gdacs] = await Promise.allSettled([
-  fetchUSGSEarthquakes(),    // USGS地震数据
-  fetchNASAEONET(),         // NASA环境事件
-  fetchGDACS()              // GDACS全球灾害预警
-]);
+```python
+# Python异步并行提取数据
+import asyncio
+import aiohttp
+
+async def extract_all_sources():
+    """并行提取三个数据源"""
+    async with aiohttp.ClientSession() as session:
+        tasks = [
+            fetch_usgs_earthquakes(session),  # USGS地震数据
+            fetch_nasa_eonet(session),        # NASA环境事件  
+            fetch_gdacs(session)              # GDACS全球灾害预警
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return results
 ```
 
 **设计亮点**：

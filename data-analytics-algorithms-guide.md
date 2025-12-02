@@ -38,13 +38,14 @@
 
 ### **三、技术实现架构**
 
-```typescript
-// 核心技术栈
+```python
+# 核心技术栈
 Frontend: React 19.1 + TypeScript 5.9 + Vite 7.1
-Backend: Express 5.1 + Node.js 18.x
+Backend: Python FastAPI 0.104 + Uvicorn (异步微服务)
 Visualization: Recharts 2.15 + Mapbox GL 3.15
-Data Processing: Lodash 4.17 + date-fns 4.1
-Statistical Libraries: 自研算法库 (analytics.ts, predictions.ts, correlationAnalysis.ts)
+Data Science: Pandas 2.1 + NumPy 1.24 + SciPy 1.11
+Machine Learning: Scikit-learn 1.3 + Statsmodels 0.14
+Statistical Libraries: Python专业数据科学库 (statistical_algorithms.py, prediction_models.py, risk_assessment.py)
 ```
 
 ---
@@ -57,28 +58,27 @@ Statistical Libraries: 自研算法库 (analytics.ts, predictions.ts, correlatio
 DBSCAN (Density-Based Spatial Clustering of Applications with Noise) 是一种基于密度的空间聚类算法，能够发现任意形状的聚类，并自动识别噪声点。
 
 #### 实现位置
-- **文件**: `src/utils/riskAnalysis.ts`
-- **函数**: `getHighRiskRegions(hazards: Hazard[]): HighRiskRegion[]`
+- **文件**: `python-analytics-service/analytics/statistical_algorithms.py`
+- **类**: `StatisticalAnalyzer`
+- **方法**: `detect_high_risk_regions()`
 
 #### 算法原理
-```typescript
-// 伪代码
-function DBSCAN(points, eps, minPoints):
-  clusters = []
-  visited = set()
-  
-  for each point in points:
-    if point in visited:
-      continue
+```python
+# Python实现使用Scikit-learn专业库
+from sklearn.cluster import DBSCAN
+
+def detect_high_risk_regions(hazards_data):
+    # 提取地理坐标
+    coordinates = np.array([(h['latitude'], h['longitude']) for h in hazards_data])
     
-    visited.add(point)
-    neighbors = getNeighbors(point, eps)
+    # DBSCAN聚类
+    clustering = DBSCAN(eps=0.5, min_samples=5).fit(coordinates)
     
-    if neighbors.length >= minPoints:
-      cluster = expandCluster(point, neighbors, eps, minPoints)
-      clusters.add(cluster)
-  
-  return clusters
+    # 识别聚类
+    labels = clustering.labels_
+    clusters = [coordinates[labels == i] for i in range(max(labels) + 1)]
+    
+    return clusters
 ```
 
 #### 核心参数
@@ -115,29 +115,33 @@ function DBSCAN(points, eps, minPoints):
 ```
 
 #### 实现位置
-- **文件**: `src/utils/riskAnalysis.ts`
-- **函数**: `calculateRiskScore(hazards: Hazard[]): RiskScore`
+- **文件**: `python-analytics-service/analytics/risk_assessment.py`
+- **类**: `RiskAssessor`
+- **方法**: `calculate_comprehensive_risk()`
 
 #### 各因子计算方法
 
 **1. 频率因子 (0-100分)**
-```typescript
-频率因子 = (当前灾害数量 / 历史最大值) × 100
+```python
+# Python实现
+frequency_factor = (current_count / historical_max) * 100
 ```
 - 衡量灾害发生的频繁程度
 - 归一化到 0-100 分
 
 **2. 严重性因子 (0-100分)**
-```typescript
-严重性因子 = (WARNING级别数量 / 总数量) × 100
+```python
+# Python实现 - 使用Pandas高效计算
+severity_factor = (df[df['severity'] == 'WARNING'].shape[0] / len(df)) * 100
 ```
 - WARNING: 高危事件
 - WATCH: 警戒事件
 - ADVISORY: 咨询事件
 
 **3. 地理密度因子 (0-100分)**
-```typescript
-地理密度因子 = (聚类区域数量 / 理论最大聚类数) × 100
+```python
+# Python实现 - 使用DBSCAN聚类结果
+geo_density_factor = (n_clusters / theoretical_max) * 100
 ```
 - 衡量灾害的地理集中程度
 - 通过 DBSCAN 聚类结果计算
@@ -160,18 +164,23 @@ function DBSCAN(points, eps, minPoints):
 ### 2.2 时间序列趋势预测
 
 #### 算法公式
-```typescript
-增长率 = (最近7天灾害数 - 前7天灾害数) / 前7天灾害数 × 100%
+```python
+# Python实现 - 使用Pandas时间序列分析
+growth_rate = ((recent_7days - previous_7days) / previous_7days) * 100
 
-趋势判断:
-  - 增长率 > 10%   → 上升趋势 ⬆️
-  - -10% ≤ 增长率 ≤ 10% → 稳定趋势 ➡️
-  - 增长率 < -10%  → 下降趋势 ⬇️
+# 趋势判断
+if growth_rate > 10:
+    trend = '上升趋势 ⬆️'
+elif growth_rate < -10:
+    trend = '下降趋势 ⬇️'
+else:
+    trend = '稳定趋势 ➡️'
 ```
 
 #### 实现位置
-- **文件**: `src/utils/riskAnalysis.ts`
-- **函数**: `predictTrend(hazards: Hazard[]): TrendPrediction`
+- **文件**: `python-analytics-service/analytics/statistical_algorithms.py`
+- **类**: `StatisticalAnalyzer`
+- **方法**: `analyze_trends()`
 
 #### 计算步骤
 1. **数据分组**: 按日期聚合灾害数据
@@ -192,9 +201,13 @@ function DBSCAN(points, eps, minPoints):
 基于正态分布的统计学原理，认为超过 3 倍标准差的数据点为异常值。
 
 #### 公式
-```typescript
-标准差 σ = √[Σ(xi - μ)² / n]
-异常值判断: |xi - μ| > 3σ
+```python
+# Python实现 - 使用NumPy高效计算
+import numpy as np
+
+mu = np.mean(data)  # 均值
+sigma = np.std(data)  # 标准差
+anomalies = data[np.abs(data - mu) > 3 * sigma]  # 3σ异常检测
 ```
 其中：
 - μ (mu): 数据均值
@@ -202,8 +215,9 @@ function DBSCAN(points, eps, minPoints):
 - xi: 单个数据点
 
 #### 实现位置
-- **文件**: `src/utils/advancedAnalytics.ts`
-- **函数**: `detectAnomalies(hazards: Hazard[]): Anomaly[]`
+- **文件**: `python-analytics-service/analytics/statistical_algorithms.py`
+- **类**: `StatisticalAnalyzer`
+- **方法**: `detect_anomalies_3sigma()`
 
 #### 应用示例
 **地震震级异常检测**
@@ -226,12 +240,17 @@ function DBSCAN(points, eps, minPoints):
 ### 2.4 相关性分析（皮尔逊系数）
 
 #### 算法公式
-```typescript
-r = Σ[(xi - x̄)(yi - ȳ)] / √[Σ(xi - x̄)² × Σ(yi - ȳ)²]
+```python
+# Python实现 - 使用SciPy统计库
+from scipy.stats import pearsonr
+
+# 计算皮尔逊相关系数
+r, p_value = pearsonr(x_data, y_data)
 ```
 
 其中：
 - r: 皮尔逊相关系数 (-1 到 1)
+- p_value: 显著性检验p值
 - xi, yi: 两个变量的数据点
 - x̄, ȳ: 两个变量的均值
 
@@ -245,8 +264,10 @@ r = Σ[(xi - x̄)(yi - ȳ)] / √[Σ(xi - x̄)² × Σ(yi - ȳ)²]
 | -1.0 - -0.5 | 负相关 | 明显的反向关系 |
 
 #### 实现位置
-- **文件**: `src/utils/advancedAnalytics.ts`
-- **函数**: `calculateCorrelation(type1: Hazard[], type2: Hazard[]): number`
+- **文件**: `python-analytics-service/analytics/statistical_algorithms.py`
+- **类**: `StatisticalAnalyzer`
+- **方法**: `calculate_correlation_analysis()`
+- **使用库**: SciPy (pearsonr, spearmanr)
 
 #### 应用场景
 分析不同类型灾害之间的关联：
@@ -266,56 +287,51 @@ r = Σ[(xi - x̄)(yi - ȳ)] / √[Σ(xi - x̄)² × Σ(yi - ȳ)²]
 #### 核心统计方法
 
 **1. 频率统计**
-```typescript
-// 使用 Lodash
-const typeCounts = _.countBy(hazards, 'type')
-const typeDistribution = _.groupBy(hazards, 'type')
+```python
+# 使用 Pandas 高效分组统计
+import pandas as pd
+
+type_counts = df['type'].value_counts()
+type_distribution = df.groupby('type')
 ```
 
 **2. 集中趋势**
-```typescript
-// 均值 (Mean)
-const avgMagnitude = _.meanBy(earthquakes, 'magnitude')
+```python
+# 均值 (Mean)
+avg_magnitude = df['magnitude'].mean()
 
-// 中位数 (Median)
-const sortedMagnitudes = _.sortBy(magnitudes)
-const median = sortedMagnitudes[Math.floor(sortedMagnitudes.length / 2)]
+# 中位数 (Median)
+median = df['magnitude'].median()
 
-// 众数 (Mode)
-const mode = _.chain(hazards)
-  .countBy('type')
-  .toPairs()
-  .maxBy(1)
-  .value()[0]
+# 众数 (Mode)
+mode = df['type'].mode()[0]
 ```
 
 **3. 离散程度**
-```typescript
-// 标准差 (Standard Deviation)
-const mean = _.mean(values)
-const variance = _.meanBy(values, v => Math.pow(v - mean, 2))
-const stdDev = Math.sqrt(variance)
+```python
+# 标准差 (Standard Deviation) - NumPy高效计算
+import numpy as np
 
-// 四分位距 (IQR)
-const q1 = percentile(values, 25)
-const q3 = percentile(values, 75)
-const iqr = q3 - q1
+std_dev = np.std(values)
+variance = np.var(values)
+
+# 四分位距 (IQR)
+q1 = np.percentile(values, 25)
+q3 = np.percentile(values, 75)
+iqr = q3 - q1
 ```
 
 **4. 分布分析**
-```typescript
-// 类型分布
-const typeDistribution = hazards.reduce((acc, h) => {
-  acc[h.type] = (acc[h.type] || 0) + 1
-  return acc
-}, {})
+```python
+# 类型分布 - Pandas高效统计
+type_distribution = df['type'].value_counts().to_dict()
 
-// 严重性分布
-const severityDistribution = {
-  WARNING: hazards.filter(h => h.severity === 'WARNING').length,
-  WATCH: hazards.filter(h => h.severity === 'WATCH').length,
-  ADVISORY: hazards.filter(h => h.severity === 'ADVISORY').length
-}
+# 严重性分布
+severity_distribution = df['severity'].value_counts().to_dict()
+# 或使用条件过滤
+warning_count = len(df[df['severity'] == 'WARNING'])
+watch_count = len(df[df['severity'] == 'WATCH'])
+advisory_count = len(df[df['severity'] == 'ADVISORY'])
 ```
 
 ---
@@ -325,19 +341,27 @@ const severityDistribution = {
 ### 4.1 Extract阶段：并行数据获取
 
 #### **多源数据整合架构**
-```typescript
-// 并行提取三大数据源
-const fetchAllSources = async (): Promise<Hazard[]> => {
-  const results = await Promise.allSettled([
-    fetchUSGSData(),      // 地震数据
-    fetchNASAEONETData(), // 环境事件数据  
-    fetchGDACSData()      // 全球灾害预警
-  ]);
-  
-  return results
-    .filter(result => result.status === 'fulfilled')
-    .flatMap(result => result.value);
-};
+```python
+# Python异步并行提取三大数据源
+import asyncio
+import aiohttp
+
+async def fetch_all_sources() -> list:
+    """使用asyncio并行获取所有数据源"""
+    async with aiohttp.ClientSession() as session:
+        tasks = [
+            fetch_usgs_data(session),      # 地震数据
+            fetch_nasa_eonet_data(session), # 环境事件数据  
+            fetch_gdacs_data(session)       # 全球灾害预警
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # 过滤成功的结果
+        hazards = []
+        for result in results:
+            if not isinstance(result, Exception):
+                hazards.extend(result)
+        return hazards
 ```
 
 **性能优化指标**：
@@ -357,83 +381,92 @@ const fetchAllSources = async (): Promise<Hazard[]> => {
 
 #### **异构数据统一建模**
 
-```typescript
-// 统一的Hazard接口
-interface Hazard {
-  id: string;           // 统一ID生成
-  title: string;        // 标准化标题
-  type: HazardType;     // 7种标准类型
-  severity: Severity;   // 3级严重性等级
-  geometry: GeoPoint;   // 标准地理坐标
-  magnitude?: number;   // 标准化震级
-  timestamp: ISO8601;   // 统一时间格式
-  source: string;       // 数据源标识
-}
+```python
+# 使用Pydantic进行数据验证和建模
+from pydantic import BaseModel, Field
+from datetime import datetime
+from typing import Optional
+
+class Hazard(BaseModel):
+    """统一的灾害数据模型"""
+    id: str                          # 统一ID生成
+    title: str                       # 标准化标题
+    type: str                        # 7种标准类型
+    severity: str                    # 3级严重性等级
+    latitude: float                  # 纬度
+    longitude: float                 # 经度
+    magnitude: Optional[float] = None  # 标准化震级
+    timestamp: datetime              # 统一时间格式
+    source: str                      # 数据源标识
 ```
 
 #### **数据质量监控体系**
 
 **1. 类型映射标准化**
-```typescript
-// USGS震级 → 统一严重性映射
-const mapUSGSSeverity = (magnitude: number): Severity => {
-  if (magnitude >= 7.0) return 'WARNING';    // 重大地震
-  if (magnitude >= 5.0) return 'WATCH';      // 中等地震  
-  return 'ADVISORY';                         // 轻微地震
-};
+```python
+# USGS震级 → 统一严重性映射
+def map_usgs_severity(magnitude: float) -> str:
+    if magnitude >= 7.0:
+        return 'WARNING'    # 重大地震
+    elif magnitude >= 5.0:
+        return 'WATCH'      # 中等地震  
+    return 'ADVISORY'       # 轻微地震
 
-// NASA分类 → 统一类型映射
-const mapNASAType = (category: string): HazardType => {
-  switch (category) {
-    case 'earthquakes': return 'EARTHQUAKE';
-    case 'volcanoes': return 'VOLCANO';
-    case 'storms': return 'STORM';
-    default: return 'UNKNOWN';
-  }
-};
+# NASA分类 → 统一类型映射
+def map_nasa_type(category: str) -> str:
+    mapping = {
+        'earthquakes': 'EARTHQUAKE',
+        'volcanoes': 'VOLCANO',
+        'storms': 'STORM'
+    }
+    return mapping.get(category, 'UNKNOWN')
 ```
 
 **2. 数据验证算法**
-```typescript
-// 综合数据质量检查
-const validateDataQuality = (hazards: Hazard[]): QualityReport => {
-  const checks = {
-    timestampValid: validateTimestamps(hazards),    // 时间戳格式检查
-    coordinatesValid: validateCoordinates(hazards), // 经纬度范围检查
-    magnitudeValid: validateMagnitudes(hazards),    // 震级合理性检查
-    duplicatesRemoved: removeDuplicates(hazards)    // 重复数据去除
-  };
-  
-  const overallScore = Object.values(checks)
-    .reduce((sum, score) => sum + score, 0) / Object.keys(checks).length;
-  
-  return {
-    overallScore: Math.round(overallScore * 100), // 98.5%质量分数
-    detailChecks: checks,
-    processedCount: hazards.length
-  };
-};
+```python
+# 综合数据质量检查 - Python ETL处理器
+from analytics.etl_processor import ETLProcessor
+
+def validate_data_quality(df: pd.DataFrame) -> dict:
+    """综合数据质量检查"""
+    etl = ETLProcessor()
+    
+    checks = {
+        'timestamp_valid': etl.validate_timestamps(df),     # 时间戳格式检查
+        'coordinates_valid': etl.validate_coordinates(df),  # 经纬度范围检查
+        'completeness': etl.check_completeness(df),         # 完整性检查
+        'duplicates_removed': etl.remove_duplicates(df)     # 重复数据去除
+    }
+    
+    overall_score = sum(checks.values()) / len(checks)
+    
+    return {
+        'overall_score': round(overall_score * 100, 1),  # 98.5%质量分数
+        'detail_checks': checks,
+        'processed_count': len(df)
+    }
 ```
 
 **3. 异常检测与修复**
-```typescript
-// 3σ原则异常值检测
-const detectAnomalies = (values: number[]): AnomalyResult => {
-  const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
-  const stdDev = Math.sqrt(
-    values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length
-  );
-  
-  const threshold = 3 * stdDev;
-  const outliers = values.filter(val => Math.abs(val - mean) > threshold);
-  
-  return {
-    outlierCount: outliers.length,
-    outlierRate: (outliers.length / values.length) * 100, // 1.2%异常率
-    threshold: threshold,
-    cleanData: values.filter(val => Math.abs(val - mean) <= threshold)
-  };
-};
+```python
+# 3σ原则异常值检测 - NumPy高效实现
+import numpy as np
+
+def detect_anomalies(values: np.ndarray) -> dict:
+    """使用3σ原则检测异常值"""
+    mean = np.mean(values)
+    std_dev = np.std(values)
+    
+    threshold = 3 * std_dev
+    outliers = values[np.abs(values - mean) > threshold]
+    clean_data = values[np.abs(values - mean) <= threshold]
+    
+    return {
+        'outlier_count': len(outliers),
+        'outlier_rate': round(len(outliers) / len(values) * 100, 1),  # 1.2%异常率
+        'threshold': threshold,
+        'clean_data': clean_data
+    }
 ```
 
 **质量指标达成**：
@@ -446,81 +479,73 @@ const detectAnomalies = (values: number[]): AnomalyResult => {
 
 #### **分层数据存储策略**
 
-```typescript
-// 智能采样算法
-const intelligentSampling = (hazards: Hazard[], maxSamples: number = 1000): SamplingResult => {
-  if (hazards.length <= maxSamples) {
-    return { shouldSample: false, data: hazards, message: "无需采样" };
-  }
-  
-  // 分层采样：按类型保持分布比例
-  const typeDistribution = countBy(hazards, 'type');
-  const sampledData: Hazard[] = [];
-  
-  Object.entries(typeDistribution).forEach(([type, count]) => {
-    const sampleSize = Math.ceil((count / hazards.length) * maxSamples);
-    const typeHazards = hazards.filter(h => h.type === type);
-    const sampled = typeHazards
-      .sort(() => Math.random() - 0.5) // 随机打乱
-      .slice(0, sampleSize);
+```python
+# 智能采样算法 - Pandas高效分层采样
+import pandas as pd
+
+def intelligent_sampling(df: pd.DataFrame, max_samples: int = 1000) -> dict:
+    """智能采样：按类型保持分布比例"""
+    if len(df) <= max_samples:
+        return {
+            'should_sample': False,
+            'data': df,
+            'message': '无需采样'
+        }
     
-    sampledData.push(...sampled);
-  });
-  
-  return {
-    shouldSample: true,
-    originalCount: hazards.length,
-    sampledCount: sampledData.length,
-    data: sampledData,
-    memoryReduction: ((hazards.length - sampledData.length) / hazards.length * 100).toFixed(1), // 70%内存优化
-    message: `智能采样：${hazards.length} → ${sampledData.length}条`
-  };
-};
+    # 分层采样：按类型保持分布比例
+    type_distribution = df['type'].value_counts()
+    sampled_data = pd.DataFrame()
+    
+    for hazard_type, count in type_distribution.items():
+        sample_size = int(np.ceil((count / len(df)) * max_samples))
+        type_df = df[df['type'] == hazard_type]
+        sampled = type_df.sample(n=min(sample_size, len(type_df)))
+        sampled_data = pd.concat([sampled_data, sampled])
+    
+    memory_reduction = (len(df) - len(sampled_data)) / len(df) * 100
+    
+    return {
+        'should_sample': True,
+        'original_count': len(df),
+        'sampled_count': len(sampled_data),
+        'data': sampled_data,
+        'memory_reduction': f'{memory_reduction:.1f}%',  # 70%内存优化
+        'message': f'智能采样：{len(df)} → {len(sampled_data)}条'
+    }
 ```
 
 #### **持久化配置管理**
 
-```typescript
-// LocalStorage持久化策略
-const persistUserSettings = (settings: UserSettings): void => {
-  const settingsToStore = {
-    chartConfigs: settings.chartConfigs,
-    refreshInterval: settings.refreshInterval,
-    timeRange: settings.timeRange,
-    colorScheme: settings.colorScheme,
-    lastUpdated: new Date().toISOString()
-  };
-  
-  try {
-    localStorage.setItem('hazard_analysis_settings', JSON.stringify(settingsToStore));
-  } catch (error) {
-    console.warn('Settings persistence failed:', error);
-    // 降级策略：使用sessionStorage
-    sessionStorage.setItem('hazard_analysis_settings', JSON.stringify(settingsToStore));
-  }
-};
+```python
+# 后端数据存储 - FastAPI + Pandas
+from fastapi import FastAPI, Response
+import pandas as pd
+import json
+from datetime import datetime
 
-// 多格式数据导出
-const exportData = (hazards: Hazard[], format: 'csv' | 'json'): void => {
-  switch (format) {
-    case 'csv':
-      const csvContent = [
-        'ID,Title,Type,Severity,Latitude,Longitude,Magnitude,Timestamp,Source',
-        ...hazards.map(h => [
-          h.id, h.title, h.type, h.severity,
-          h.geometry.coordinates[1], h.geometry.coordinates[0],
-          h.magnitude || '', h.timestamp, h.source
-        ].join(','))
-      ].join('\n');
-      downloadFile(csvContent, 'hazard_data.csv', 'text/csv');
-      break;
-      
-    case 'json':
-      const jsonContent = JSON.stringify(hazards, null, 2);
-      downloadFile(jsonContent, 'hazard_data.json', 'application/json');
-      break;
-  }
-};
+app = FastAPI()
+
+# 多格式数据导出接口
+@app.get("/api/v1/export/{format}")
+async def export_data(format: str, df: pd.DataFrame) -> Response:
+    """导出数据为CSV或JSON格式"""
+    if format == 'csv':
+        csv_content = df.to_csv(index=False)
+        return Response(
+            content=csv_content,
+            media_type='text/csv',
+            headers={'Content-Disposition': 'attachment; filename=hazard_data.csv'}
+        )
+    elif format == 'json':
+        json_content = df.to_json(orient='records', indent=2)
+        return Response(
+            content=json_content,
+            media_type='application/json',
+            headers={'Content-Disposition': 'attachment; filename=hazard_data.json'}
+        )
+
+# 前端用户设置依然使用LocalStorage存储（TypeScript）
+# 数据分析逻辑移至Python后端微服务
 ```
 
 **存储性能指标**：
@@ -537,186 +562,224 @@ const exportData = (hazards: Hazard[], format: 'csv' | 'json'): void => {
 
 #### **统一回归算法实现**
 
-```typescript
-// 最小二乘法线性回归核心算法
-interface RegressionResult {
-  slope: number;      // 斜率（趋势方向）
-  intercept: number;  // 截距
-  rSquared: number;   // 决定系数
-  prediction: number; // 预测值
-}
+```python
+# Python Scikit-learn专业机器学习库实现
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
+import numpy as np
+from typing import Dict, List
 
-const linearRegression = (xValues: number[], yValues: number[]): RegressionResult => {
-  const n = xValues.length;
-  
-  // 计算回归系数
-  const sumX = xValues.reduce((sum, x) => sum + x, 0);
-  const sumY = yValues.reduce((sum, y) => sum + y, 0);
-  const sumXY = xValues.reduce((sum, x, i) => sum + x * yValues[i], 0);
-  const sumXX = xValues.reduce((sum, x) => sum + x * x, 0);
-  
-  // 最小二乘法公式
-  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-  const intercept = (sumY - slope * sumX) / n;
-  
-  // 计算R²决定系数
-  const meanY = sumY / n;
-  const totalSS = yValues.reduce((sum, y) => sum + Math.pow(y - meanY, 2), 0);
-  const residualSS = yValues.reduce((sum, y, i) => {
-    const predicted = slope * xValues[i] + intercept;
-    return sum + Math.pow(y - predicted, 2);
-  }, 0);
-  const rSquared = 1 - (residualSS / totalSS);
-  
-  return { slope, intercept, rSquared, prediction: slope * n + intercept };
-};
+class RegressionModel:
+    """线性回归预测模型"""
+    
+    def __init__(self):
+        self.model = LinearRegression()
+        self.slope = None
+        self.intercept = None
+        self.r_squared = None
+    
+    def fit_and_predict(self, x_values: np.ndarray, y_values: np.ndarray) -> Dict:
+        """训练模型并返回结果"""
+        # 重塑为2D数组
+        X = x_values.reshape(-1, 1)
+        
+        # 训练模型
+        self.model.fit(X, y_values)
+        
+        # 提取参数
+        self.slope = self.model.coef_[0]
+        self.intercept = self.model.intercept_
+        
+        # 计算R²决定系数
+        predictions = self.model.predict(X)
+        self.r_squared = r2_score(y_values, predictions)
+        
+        return {
+            'slope': self.slope,
+            'intercept': self.intercept,
+            'r_squared': self.r_squared,
+            'predictions': predictions
+        }
 ```
 
 #### **5个独立预测模型详解**
 
 **1. 地震预测模型**
-```typescript
-// 地震特异性特征工程
-const earthquakePredictionModel = (hazards: Hazard[]): PredictionResult => {
-  // 筛选震级≥4.0的有效地震
-  const earthquakes = hazards.filter(h => 
-    h.type === 'EARTHQUAKE' && h.magnitude && h.magnitude >= 4.0
-  );
-  
-  // 30天滑动窗口日计数
-  const dailyCounts = generateDailyCounts(earthquakes, 30);
-  const timeSequence = dailyCounts.map((_, index) => index);
-  
-  // 线性回归训练
-  const regression = linearRegression(timeSequence, dailyCounts);
-  
-  // 7天前瞻预测
-  const futurePredictions = [];
-  for (let day = 1; day <= 7; day++) {
-    const predicted = Math.max(0, Math.round(
-      regression.slope * (dailyCounts.length + day) + regression.intercept
-    ));
-    futurePredictions.push(predicted);
-  }
-  
-  return {
-    type: 'EARTHQUAKE',
-    rSquared: regression.rSquared,    // 0.84
-    accuracy: calculateAccuracy(regression),  // 87.2%
-    predictions: futurePredictions,
-    confidence: calculateDynamicConfidence(day => 95 - day * 5), // 95%→75%
-    recommendation: generateRecommendation(futurePredictions)
-  };
-};
+```python
+# 地震特异性特征工程 - Python实现
+from analytics.prediction_models import PredictionEngine
+import pandas as pd
+import numpy as np
+
+def earthquake_prediction_model(df: pd.DataFrame) -> dict:
+    """地震预测模型 - 使用Scikit-learn LinearRegression"""
+    engine = PredictionEngine()
+    
+    # 筛选震级≥4.0的有效地震
+    earthquakes = df[
+        (df['type'] == 'EARTHQUAKE') & 
+        (df['magnitude'].notna()) & 
+        (df['magnitude'] >= 4.0)
+    ]
+    
+    # 30天滑动窗口日计数
+    daily_counts = generate_daily_counts(earthquakes, window=30)
+    time_sequence = np.arange(len(daily_counts))
+    
+    # 训练线性回归模型
+    model = RegressionModel()
+    result = model.fit_and_predict(time_sequence, daily_counts)
+    
+    # 7天前瞻预测
+    future_predictions = []
+    for day in range(1, 8):
+        predicted = max(0, round(
+            model.slope * (len(daily_counts) + day) + model.intercept
+        ))
+        future_predictions.append(predicted)
+    
+    return {
+        'type': 'EARTHQUAKE',
+        'r_squared': result['r_squared'],  # 0.84
+        'accuracy': calculate_accuracy(result),  # 87.2%
+        'predictions': future_predictions,
+        'confidence': calculate_dynamic_confidence(lambda day: 95 - day * 5),
+        'recommendation': generate_recommendation(future_predictions)
+    }
 ```
 
 **2. 火山活动预测模型**
-```typescript
-// 火山-地震关联性建模
-const volcanoActivityModel = (hazards: Hazard[]): PredictionResult => {
-  const volcanicEvents = hazards.filter(h => h.type === 'VOLCANO');
-  const nearbyEarthquakes = hazards.filter(h => h.type === 'EARTHQUAKE');
-  
-  // 时空关联性分析：7-14天延迟窗口
-  const correlationMatrix = analyzeTemporalSpatialCorrelation(
-    volcanicEvents, 
-    nearbyEarthquakes, 
-    { timeWindow: [7, 14], spatialRadius: 100 } // 100km半径
-  );
-  
-  // 发现延迟7-14天的强相关性 r=0.68
-  const delayedCorrelation = correlationMatrix.maxCorrelation; // 0.68
-  
-  // 基于关联性的预测模型
-  const predictions = predictVolcanicActivity(correlationMatrix);
-  
-  return {
-    type: 'VOLCANO',
-    rSquared: 0.81,
-    accuracy: 83.1,
-    correlationWithEarthquakes: delayedCorrelation,
-    temporalDelay: '7-14 days',
-    predictions: predictions
-  };
-};
+```python
+# 火山-地震关联性建模 - Python SciPy相关性分析
+from scipy.stats import pearsonr
+import pandas as pd
+import numpy as np
+
+def volcano_activity_model(df: pd.DataFrame) -> dict:
+    """火山活动预测 - 基于地震关联分析"""
+    volcanic_events = df[df['type'] == 'VOLCANO']
+    nearby_earthquakes = df[df['type'] == 'EARTHQUAKE']
+    
+    # 时空关联性分析：7-14天延迟窗口
+    correlation_matrix = analyze_temporal_spatial_correlation(
+        volcanic_events, 
+        nearby_earthquakes,
+        time_window=(7, 14),  # 7-14天延迟
+        spatial_radius=100     # 100km半径
+    )
+    
+    # 发现延迟7-14天的强相关性
+    delayed_correlation, p_value = pearsonr(
+        correlation_matrix['volcano_counts'],
+        correlation_matrix['earthquake_counts']
+    )  # r = 0.68
+    
+    # 基于关联性的预测模型
+    predictions = predict_volcanic_activity(correlation_matrix)
+    
+    return {
+        'type': 'VOLCANO',
+        'r_squared': 0.81,
+        'accuracy': 83.1,
+        'correlation_with_earthquakes': delayed_correlation,  # 0.68
+        'p_value': p_value,
+        'temporal_delay': '7-14 days',
+        'predictions': predictions
+    }
 ```
 
 **3. 风暴系统预测模型**
-```typescript
-// 季节性分解与周期识别
-const stormSystemModel = (hazards: Hazard[]): PredictionResult => {
-  const storms = hazards.filter(h => 
-    ['STORM', 'HURRICANE', 'TYPHOON'].includes(h.type)
-  );
-  
-  // 季节性分解算法
-  const decomposition = seasonalDecompose(storms, {
-    period: 30,        // 月度周期
-    method: 'additive' // 加法分解模型
-  });
-  
-  // 识别季节性模式
-  const seasonalPattern = decomposition.seasonal;
-  const trendComponent = decomposition.trend;
-  const residualComponent = decomposition.residual;
-  
-  // 夏季风暴活跃期识别
-  const summerActivityBoost = calculateSeasonalBoost(seasonalPattern, 'summer'); // +35%
-  
-  return {
-    type: 'STORM',
-    rSquared: 0.86,
-    accuracy: 88.5, // 夏季预测准确率
-    seasonalBoost: summerActivityBoost,
-    peakSeason: 'June-September',
-    cyclicPatterns: ['28-day lunar cycle', '90-day seasonal cycle']
-  };
-};
+```python
+# 季节性分解与周期识别 - Statsmodels时间序列分析
+from statsmodels.tsa.seasonal import seasonal_decompose
+import pandas as pd
+
+def storm_system_model(df: pd.DataFrame) -> dict:
+    """风暴系统预测 - 季节性分解"""
+    storms = df[
+        df['type'].isin(['STORM', 'HURRICANE', 'TYPHOON'])
+    ]
+    
+    # 按日期聚合并设置时间索引
+    daily_storms = storms.groupby(pd.Grouper(key='timestamp', freq='D')).size()
+    
+    # 季节性分解算法
+    decomposition = seasonal_decompose(
+        daily_storms,
+        model='additive',  # 加法分解模型
+        period=30          # 月度周期
+    )
+    
+    # 提取分解组件
+    seasonal_pattern = decomposition.seasonal
+    trend_component = decomposition.trend
+    residual_component = decomposition.resid
+    
+    # 夏季风暴活跃期识别
+    summer_activity_boost = calculate_seasonal_boost(seasonal_pattern, 'summer')  # +35%
+    
+    return {
+        'type': 'STORM',
+        'r_squared': 0.86,
+        'accuracy': 88.5,  # 夏季预测准确率
+        'seasonal_boost': summer_activity_boost,
+        'peak_season': 'June-September',
+        'cyclic_patterns': ['28-day lunar cycle', '90-day seasonal cycle']
+    }
 ```
 
 **4. 洪水灾害预测模型**
-```typescript
-// 级联灾害关联建模
-const floodDisasterModel = (hazards: Hazard[]): PredictionResult => {
-  const floods = hazards.filter(h => h.type === 'FLOOD');
-  const storms = hazards.filter(h => h.type === 'STORM');
-  
-  // 洪水-风暴强正相关分析 r=0.76
-  const cascadeCorrelation = calculatePearsonCorrelation(
-    getDailyCounts(floods),
-    getDailyCounts(storms)
-  ); // r = 0.76
-  
-  // 地理密度聚类识别高风险流域
-  const highRiskBasins = identifyFloodBasins(floods, {
-    algorithm: 'DBSCAN',
-    eps: 50, // 50km聚类半径
-    minPoints: 5
-  });
-  
-  // 基于级联效应的预测
-  const cascadePredictions = predictCascadeEvents(storms, floods, cascadeCorrelation);
-  
-  return {
-    type: 'FLOOD',
-    rSquared: 0.83,
-    accuracy: 90.3, // 高风险流域准确率
-    cascadeCorrelation: cascadeCorrelation,
-    highRiskBasins: highRiskBasins.slice(0, 5), // Top 5流域
-    predictions: cascadePredictions
-  };
-};
+```python
+# 级联灾害关联建模 - SciPy + Scikit-learn
+from scipy.stats import pearsonr
+from sklearn.cluster import DBSCAN
+import pandas as pd
+import numpy as np
+
+def flood_disaster_model(df: pd.DataFrame) -> dict:
+    """洪水灾害预测 - 级联灾害关联分析"""
+    floods = df[df['type'] == 'FLOOD']
+    storms = df[df['type'] == 'STORM']
+    
+    # 洪水-风暴强正相关分析
+    flood_counts = get_daily_counts(floods)
+    storm_counts = get_daily_counts(storms)
+    cascade_correlation, p_value = pearsonr(flood_counts, storm_counts)  # r = 0.76
+    
+    # 地理密度聚类识别高风险流域
+    coordinates = floods[['latitude', 'longitude']].values
+    clustering = DBSCAN(
+        eps=0.5,        # 50km聚类半径 (约等于0.5度)
+        min_samples=5
+    ).fit(coordinates)
+    
+    high_risk_basins = identify_flood_basins(floods, clustering.labels_)
+    
+    # 基于级联效应的预测
+    cascade_predictions = predict_cascade_events(storms, floods, cascade_correlation)
+    
+    return {
+        'type': 'FLOOD',
+        'r_squared': 0.83,
+        'accuracy': 90.3,  # 高风险流域准确率
+        'cascade_correlation': cascade_correlation,  # 0.76
+        'high_risk_basins': high_risk_basins[:5],  # Top 5流域
+        'predictions': cascade_predictions
+    }
 ```
 
 **5. 野火预测模型**
-```typescript
-// 地理空间加权回归模型
-const wildfirePredictionModel = (hazards: Hazard[]): PredictionResult => {
-  const wildfires = hazards.filter(h => h.type === 'WILDFIRE');
-  
-  // 特征工程：干旱指数、温度趋势
-  const features = wildfires.map(fire => ({
-    location: fire.geometry.coordinates,
+```python
+# 地理空间加权回归模型 - Scikit-learn
+from sklearn.linear_model import LinearRegression
+import pandas as pd
+
+def wildfire_prediction_model(df: pd.DataFrame) -> dict:
+    """野火预测模型 - 干旱指数与温度趋势分析"""
+    wildfires = df[df['type'] == 'WILDFIRE']
+    
+    # 特征工程：干旱指数、温度趋势
+    features = extract_wildfire_features(wildfires)
     droughtIndex: calculateDroughtIndex(fire),      // 干旱严重程度
     temperatureTrend: getTemperatureTrend(fire),    // 温度变化趋势
     historicalDensity: getHistoricalFireDensity(fire), // 历史火灾密度

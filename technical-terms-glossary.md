@@ -111,9 +111,11 @@
 **定义**: 数据仓库中数据处理的标准流程。
 
 **简历中的应用**: 整合USGS、NASA、GDACS三大数据源
-- **Extract**: 从各API提取实时数据
-- **Transform**: 统一数据格式、清洗异常值
-- **Load**: 存储到分析系统
+- **Extract**: 从各API提取实时数据（前端TypeScript实现）
+- **Transform**: 统一数据格式、清洗异常值、统计分析（**Python微服务实现**）
+- **Load**: 存储到分析系统、状态管理（前端React实现）
+
+> 💡 **架构说明**: 本项目采用混合架构 - Extract阶段由前端TypeScript完成（并行API调用），Transform阶段由Python FastAPI微服务完成（23种统计算法、5个预测模型、风险评估），Load阶段将结果返回前端展示。详见 [Python服务文档](../python-analytics-service/README.md)
 
 ---
 

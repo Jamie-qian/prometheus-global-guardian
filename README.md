@@ -139,12 +139,11 @@ prometheus-global-guardian/
 │   │   └── InsightsPanel.tsx         # 智能洞察面板
 │   ├── api/                 # API 接口
 │   │   ├── auth.ts
-│   │   └── disasteraware.ts
+│   │   ├── disasteraware.ts
+│   │   └── pythonAnalytics.ts        # Python分析服务API客户端
 │   ├── utils/               # 工具函数
-│   │   ├── analytics.ts              # 核心数据分析函数
-│   │   ├── riskAnalysis.ts           # 风险评估算法
-│   │   ├── advancedAnalytics.ts      # 高级分析算法
-│   │   └── reportGenerator.ts        # 报告生成器
+│   │   ├── dataExport.ts             # 数据导出工具
+│   │   └── notifications.ts          # 通知工具
 │   ├── config/              # 配置文件
 │   │   ├── displayedTypes.ts
 │   │   ├── hazardColors.ts
@@ -419,31 +418,29 @@ npm start
 - ✅ 完整的数据导出，支持离线查看
 - ✅ 一键下载，格式化文件名
 
-### **6. 数据分析工具库**
+### **6. Python 数据分析微服务 API**
 
-#### **analytics.ts - 核心统计函数**
-```typescript
-- calculateHazardStats()     // 计算综合统计数据
-- getTypeDistribution()       // 获取类型分布
-- getSeverityDistribution()   // 获取严重性分布
-- getTimeSeriesData()         // 生成时间序列数据
-- getSourceDistribution()     // 统计数据源分布
-```
+#### **统计分析服务 (POST /api/v1/statistics)**
+- 23种统计算法（描述性统计、推断统计、时间序列、相关性、异常检测）
+- 数据分布分析、频率统计、置信区间估计
+- 基于 Pandas、NumPy、SciPy、Statsmodels 实现
 
-#### **riskAnalysis.ts - 风险评估**
-```typescript
-- calculateRiskScore()        // 计算风险评分
-- getHighRiskRegions()        // 识别高风险区域
-- predictTrend()              // 预测未来趋势
-```
+#### **预测模型服务 (POST /api/v1/predictions)**
+- 5个独立回归模型（地震、火山、风暴、洪水、野火）
+- 30天滑动窗口、7天前瞻性预测
+- 基于 Scikit-learn LinearRegression 实现
 
-#### **advancedAnalytics.ts - 高级分析**
-```typescript
-- clusterAnalysis()           // 时空聚类分析
-- correlationAnalysis()       // 相关性分析
-- anomalyDetection()          // 异常检测
-- forecastModel()             // 预测模型
-```
+#### **风险评估服务 (POST /api/v1/risk-assessment)**
+- 综合风险评分算法（频率×0.4 + 严重性×0.4 + 密度×0.2）
+- 高风险区域识别、趋势预测
+- 智能建议生成系统
+
+#### **ETL 数据处理服务 (POST /api/v1/etl/process)**
+- 数据质量检测（5维度：完整性、准确性、一致性、时效性、有效性）
+- 数据标准化和清洗
+- 基于 Pydantic 模型验证
+
+> 💡 详见 [Python服务文档](./python-analytics-service/README.md) 了解完整API接口和使用方法
 
 ### **7. 用户交互优化**
 

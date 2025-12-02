@@ -309,6 +309,132 @@ async def risk_assessment(request: AnalysisRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ========== 新增：统一数据模型和质量监控API ==========
+
+class UnifiedDataRequest(BaseModel):
+    """统一模型数据请求"""
+    usgs_data: Optional[List[Dict]] = None
+    nasa_data: Optional[List[Dict]] = None
+    gdacs_data: Optional[List[Dict]] = None
+
+class QualityCheckRequest(BaseModel):
+    """质量检查请求"""
+    hazards: List[HazardData]
+    source: str = "unknown"
+
+@app.post("/api/v1/quality/assess")
+async def assess_data_quality(request: QualityCheckRequest):
+    """
+    五维数据质量评估接口
+    
+    评估维度：
+    - 完整性 (Completeness)
+    - 准确性 (Accuracy)
+    - 一致性 (Consistency)
+    - 时效性 (Timeliness)
+    - 有效性 (Validity)
+    """
+    try:
+        df = etl_processor.convert_to_dataframe([hazard.dict() for hazard in request.hazards])
+        quality_report = etl_processor.assess_data_quality(df, request.source)
+        
+        return {
+            "success": True,
+            "data": quality_report
+        }
+    except Exception as e:
+        logger.error(f"Quality assessment error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/unified-model/transform")
+async def transform_to_unified_model(request: QualityCheckRequest):
+    """
+    将数据转换为统一模型
+    
+    支持的数据源：USGS, NASA, GDACS
+    返回标准化的DataFrame Schema
+    """
+    try:
+        hazards_data = [hazard.dict() for hazard in request.hazards]
+        unified_df = etl_processor.transform_to_unified_model(hazards_data, request.source)
+        
+        # 转换为JSON可序列化格式
+        unified_df_clean = unified_df.replace({np.nan: None})
+        
+        return {
+            "success": True,
+            "data": {
+                "records": unified_df_clean.to_dict('records'),
+                "total_records": len(unified_df),
+                "schema": list(unified_df.columns),
+                "source": request.source
+            }
+        }
+    except Exception as e:
+        logger.error(f"Unified model transformation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/unified-model/merge")
+async def merge_multi_source(request: UnifiedDataRequest):
+    """
+    合并多数据源为统一模型
+    
+    功能：
+    - 转换各数据源到统一Schema
+    - 去重和数据清洗
+    - 各数据源质量评估
+    - 数据源质量对比
+    """
+    try:
+        result = etl_processor.merge_multi_source_data(
+            usgs_data=request.usgs_data,
+            nasa_data=request.nasa_data,
+            gdacs_data=request.gdacs_data
+        )
+        
+        # 转换DataFrame为JSON可序列化格式
+        unified_df = result['unified_data']
+        unified_df_clean = unified_df.replace({np.nan: None})
+        
+        return {
+            "success": True,
+            "data": {
+                "unified_records": unified_df_clean.to_dict('records'),
+                "total_records": result['total_records'],
+                "source_records": result['source_records'],
+                "merged_quality": result['merged_quality'],
+                "source_quality_reports": result['source_quality_reports'],
+                "source_comparison": result['source_comparison']
+            }
+        }
+    except Exception as e:
+        logger.error(f"Multi-source merge error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/quality/thresholds")
+async def get_quality_thresholds():
+    """获取质量监控阈值配置"""
+    return {
+        "success": True,
+        "data": etl_processor.quality_monitor.QUALITY_THRESHOLDS
+    }
+
+@app.get("/api/v1/quality/history")
+async def get_quality_history(limit: int = 10):
+    """获取质量评估历史记录"""
+    try:
+        history = etl_processor.quality_monitor.get_quality_trend(limit)
+        return {
+            "success": True,
+            "data": {
+                "history": history,
+                "count": len(history)
+            }
+        }
+    except Exception as e:
+        logger.error(f"Quality history error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(

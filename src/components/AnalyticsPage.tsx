@@ -3,6 +3,7 @@ import { checkHealth, getPredictions, getStatistics, getRiskAssessment } from '.
 import { notify } from '../utils/notifications';
 import { MetricCard, ProgressBar, LoadingSpinner, AlertBox, LineChart } from './DataVisualization';
 import ChartsPanel from './ChartsPanel';
+import DataQualityMonitor from './DataQualityMonitor';
 
 // 类型定义
 interface Hazard {
@@ -19,7 +20,7 @@ interface AnalyticsPageProps {
 }
 
 type ServiceStatus = 'checking' | 'online' | 'offline';
-type TabType = 'overview' | 'charts' | 'predictions' | 'risk' | 'etl';
+type TabType = 'overview' | 'charts' | 'predictions' | 'risk' | 'quality' | 'etl';
 
 // 样式常量 - 优化版
 const STYLES = {
@@ -479,6 +480,26 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose }) => {
                   ⚠️ 风险评估
                 </button>
               )}
+              <button
+                onClick={() => setActiveTab('quality')}
+                style={{
+                  padding: '12px 24px',
+                  background: activeTab === 'quality'
+                    ? 'linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%)'
+                    : 'transparent',
+                  color: activeTab === 'quality' ? '#2196F3' : '#888',
+                  border: 'none',
+                  borderBottom: activeTab === 'quality' ? '2px solid #2196F3' : '2px solid transparent',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  borderRadius: '8px 8px 0 0',
+                  transition: 'all 0.3s ease',
+                  boxShadow: activeTab === 'quality' ? '0 -4px 12px rgba(33, 150, 243, 0.2)' : 'none'
+                }}
+              >
+                ✓ 数据质量
+              </button>
             </div>
           )}
 
@@ -1458,6 +1479,23 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ hazards, onClose }) => {
                   </ul>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* 数据质量 Tab - 新增 */}
+          {activeTab === 'quality' && (
+            <div style={{ 
+              background: 'linear-gradient(135deg, #0a0a0a 0%, #050505 100%)', 
+              padding: '24px', 
+              borderRadius: '12px', 
+              marginTop: '20px',
+              border: '1px solid rgba(33, 150, 243, 0.15)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.4)'
+            }}>
+              <DataQualityMonitor 
+                hazards={hazards} 
+                source="DisasterAWARE" 
+              />
             </div>
           )}
         </div>

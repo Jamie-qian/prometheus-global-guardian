@@ -268,6 +268,139 @@ export async function getComprehensiveAnalysis(hazards: any[], analysisType = 'c
 }
 
 /**
+ * ========== 新增：数据质量监控和统一模型API ==========
+ */
+
+/**
+ * 数据质量评估（五维质量监控）
+ */
+export async function assessDataQuality(hazards: any[], source: string = 'unknown'): Promise<any> {
+  try {
+    if (!hazards || hazards.length === 0) {
+      throw new Error('没有数据可供质量评估');
+    }
+    
+    const formattedData = formatHazards(hazards);
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/quality/assess`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        hazards: formattedData,
+        source
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`质量评估失败: ${errorText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Quality assessment failed:', error);
+    throw new Error(`质量评估请求失败: ${(error as Error).message}`);
+  }
+}
+
+/**
+ * 转换为统一数据模型
+ */
+export async function transformToUnifiedModel(hazards: any[], source: string): Promise<any> {
+  try {
+    if (!hazards || hazards.length === 0) {
+      throw new Error('没有数据可供转换');
+    }
+    
+    const formattedData = formatHazards(hazards);
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/unified-model/transform`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        hazards: formattedData,
+        source
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`统一模型转换失败: ${errorText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Unified model transformation failed:', error);
+    throw new Error(`统一模型转换请求失败: ${(error as Error).message}`);
+  }
+}
+
+/**
+ * 合并多数据源
+ */
+export async function mergeMultiSourceData(
+  usgsData?: any[],
+  nasaData?: any[],
+  gdacsData?: any[]
+): Promise<any> {
+  try {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/unified-model/merge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        usgs_data: usgsData || null,
+        nasa_data: nasaData || null,
+        gdacs_data: gdacsData || null
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`多数据源合并失败: ${errorText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Multi-source merge failed:', error);
+    throw new Error(`多数据源合并请求失败: ${(error as Error).message}`);
+  }
+}
+
+/**
+ * 获取质量阈值配置
+ */
+export async function getQualityThresholds(): Promise<any> {
+  try {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/api/v1/quality/thresholds`, {}, 5000);
+    if (!response.ok) {
+      throw new Error('Failed to fetch quality thresholds');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Quality thresholds fetch failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * 获取质量历史记录
+ */
+export async function getQualityHistory(limit: number = 10): Promise<any> {
+  try {
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/api/v1/quality/history?limit=${limit}`,
+      {},
+      5000
+    );
+    if (!response.ok) {
+      throw new Error('Failed to fetch quality history');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Quality history fetch failed:', error);
+    throw error;
+  }
+}
+
+/**
  * 格式化灾害数据为 Python API 期望的格式
  */
 function formatHazards(hazards: any[]): HazardData[] {

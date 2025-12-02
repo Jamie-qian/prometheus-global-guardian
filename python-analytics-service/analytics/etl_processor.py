@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 ETL数据处理器 - 替代TypeScript的数据转换逻辑
-实现Extract-Transform-Load完整流程
+实现Extract-Transform-Load完整流程，集成统一数据模型和质量监控
 """
 
 import pandas as pd
@@ -11,11 +11,16 @@ from typing import Dict, List, Any
 import logging
 from datetime import datetime
 
+from .unified_model import UnifiedHazardModel
+from .quality_monitor import DataQualityMonitor
+
 class ETLProcessor:
-    """ETL数据流水线处理器"""
+    """ETL数据流水线处理器 - 集成统一模型和质量监控"""
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+        self.unified_model = UnifiedHazardModel()
+        self.quality_monitor = DataQualityMonitor()
         
     def convert_to_dataframe(self, hazards: List[Dict]) -> pd.DataFrame:
         """将JSON数据转换为Pandas DataFrame"""
@@ -62,44 +67,116 @@ class ETLProcessor:
             self.logger.error(f"Data processing failed: {e}")
             raise
     
-    def assess_data_quality(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """评估数据质量"""
+    def assess_data_quality(self, df: pd.DataFrame, source: str = 'unknown') -> Dict[str, Any]:
+        """评估数据质量 - 使用五维质量监控体系"""
         try:
-            total_records = len(df)
+            # 使用新的质量监控器
+            quality_report = self.quality_monitor.assess_quality(df, source)
             
-            if total_records == 0:
-                return {"overallScore": 0, "status": "no_data"}
-            
-            # 质量检查项
-            quality_checks = {
-                "completeness": self._check_completeness(df),
-                "accuracy": self._check_accuracy(df),
-                "consistency": self._check_consistency(df),
-                "validity": self._check_validity(df),
-                "timeliness": self._check_timeliness(df)
-            }
-            
-            # 计算总分，确保处理NaN
-            quality_values = [float(v) if not pd.isna(v) else 0.5 for v in quality_checks.values()]
-            overall_score = np.mean(quality_values) * 100
-            
-            # 将NaN转换为None以便JSON序列化
-            clean_quality_checks = {
-                k: (None if pd.isna(v) else float(v)) 
-                for k, v in quality_checks.items()
-            }
+            # 转换为API兼容格式
+            overall_score = quality_report['overall_score'] * 100  # 转换为0-100分制
             
             return {
-                "overallScore": float(round(overall_score, 1)) if not pd.isna(overall_score) else 0.0,
-                "targetScore": 99.8,  # 目标准确率
-                "detailChecks": clean_quality_checks,
-                "totalRecords": int(total_records),
-                "status": "excellent" if overall_score >= 98 else ("good" if overall_score >= 90 else "needs_improvement")
+                "overallScore": float(round(overall_score, 1)),
+                "targetScore": 95.0,  # 目标准确率
+                "detailChecks": {
+                    "completeness": quality_report['dimensions']['completeness']['score'],
+                    "accuracy": quality_report['dimensions']['accuracy']['score'],
+                    "consistency": quality_report['dimensions']['consistency']['score'],
+                    "timeliness": quality_report['dimensions']['timeliness']['score'],
+                    "validity": quality_report['dimensions']['validity']['score']
+                },
+                "totalRecords": quality_report['record_count'],
+                "status": quality_report['overall_status'],
+                "issues": quality_report['issues'],
+                "recommendations": quality_report['recommendations'],
+                "detailed_report": quality_report  # 完整报告
             }
             
         except Exception as e:
             self.logger.error(f"Quality assessment failed: {e}")
             return {"error": str(e)}
+    
+    def transform_to_unified_model(self, hazards: List[Dict], source: str) -> pd.DataFrame:
+        """将原始数据转换为统一模型"""
+        try:
+            if source.upper() == 'USGS':
+                return self.unified_model.transform_usgs_to_unified(hazards)
+            elif source.upper() == 'NASA':
+                return self.unified_model.transform_nasa_to_unified(hazards)
+            elif source.upper() == 'GDACS':
+                return self.unified_model.transform_gdacs_to_unified(hazards)
+            else:
+                self.logger.warning(f"Unknown source: {source}, using generic conversion")
+                return self.convert_to_dataframe(hazards)
+        except Exception as e:
+            self.logger.error(f"Unified model transformation failed for {source}: {e}")
+            raise
+    
+    def merge_multi_source_data(self, 
+                                usgs_data: List[Dict] = None,
+                                nasa_data: List[Dict] = None, 
+                                gdacs_data: List[Dict] = None) -> Dict[str, Any]:
+        """
+        合并多数据源并进行质量评估
+        
+        返回:
+        {
+            'unified_data': DataFrame,
+            'quality_reports': {...},
+            'source_comparison': {...}
+        }
+        """
+        try:
+            dataframes = []
+            quality_reports = []
+            
+            # 转换USGS数据
+            if usgs_data:
+                usgs_df = self.unified_model.transform_usgs_to_unified(usgs_data)
+                dataframes.append(usgs_df)
+                usgs_quality = self.quality_monitor.assess_quality(usgs_df, 'USGS')
+                quality_reports.append(usgs_quality)
+            
+            # 转换NASA数据
+            if nasa_data:
+                nasa_df = self.unified_model.transform_nasa_to_unified(nasa_data)
+                dataframes.append(nasa_df)
+                nasa_quality = self.quality_monitor.assess_quality(nasa_df, 'NASA')
+                quality_reports.append(nasa_quality)
+            
+            # 转换GDACS数据
+            if gdacs_data:
+                gdacs_df = self.unified_model.transform_gdacs_to_unified(gdacs_data)
+                dataframes.append(gdacs_df)
+                gdacs_quality = self.quality_monitor.assess_quality(gdacs_df, 'GDACS')
+                quality_reports.append(gdacs_quality)
+            
+            # 合并数据源
+            unified_df = self.unified_model.merge_sources(*dataframes)
+            
+            # 对合并后的数据进行整体质量评估
+            merged_quality = self.quality_monitor.assess_quality(unified_df, 'MERGED')
+            
+            # 比较数据源质量
+            source_comparison = self.quality_monitor.compare_sources(quality_reports)
+            
+            return {
+                'unified_data': unified_df,
+                'total_records': len(unified_df),
+                'source_records': {
+                    'USGS': len(dataframes[0]) if usgs_data and len(dataframes) > 0 else 0,
+                    'NASA': len(dataframes[1]) if nasa_data and len(dataframes) > 1 else 0,
+                    'GDACS': len(dataframes[2]) if gdacs_data and len(dataframes) > 2 else 0
+                },
+                'merged_quality': merged_quality,
+                'source_quality_reports': quality_reports,
+                'source_comparison': source_comparison
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Multi-source merge failed: {e}")
+            raise
     
     def _handle_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
         """处理缺失值"""

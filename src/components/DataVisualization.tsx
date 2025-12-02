@@ -33,7 +33,7 @@ export const LineChart: React.FC<LineChartProps> = ({
   const maxValue = Math.max(...values);
   const range = maxValue - minValue || 1;
   const padding = 40;
-  const chartWidth = 100; // 使用百分比
+  const chartWidth = 1000; // 使用固定宽度便于计算
   const chartHeight = height;
 
   // 计算点的位置
@@ -52,7 +52,7 @@ export const LineChart: React.FC<LineChartProps> = ({
     <div style={{ backgroundColor: '#1a1a1a', padding: '20px', borderRadius: '8px', border: '1px solid #333' }}>
       <h4 style={{ color: '#fff', marginBottom: '15px' }}>{title}</h4>
       <div style={{ position: 'relative', height: `${chartHeight}px`, marginBottom: '10px' }}>
-        <svg width="100%" height={chartHeight} style={{ overflow: 'visible' }}>
+        <svg width="100%" height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="none" style={{ overflow: 'visible' }}>
           {/* 网格线 */}
           {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
             const y = padding + (chartHeight - padding * 2) * ratio;
@@ -60,9 +60,9 @@ export const LineChart: React.FC<LineChartProps> = ({
             return (
               <g key={ratio}>
                 <line
-                  x1="0%"
+                  x1="0"
                   y1={y}
-                  x2="100%"
+                  x2={chartWidth}
                   y2={y}
                   stroke="#333"
                   strokeWidth="1"
@@ -88,41 +88,98 @@ export const LineChart: React.FC<LineChartProps> = ({
             strokeWidth="2"
             strokeLinejoin="round"
             strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
           />
 
           {/* 数据点 */}
-          {showDots && points.map((p, i) => (
-            <g key={i}>
-              <circle
-                cx={`${p.x}%`}
-                cy={p.y}
-                r="4"
-                fill={color}
-                stroke="#1a1a1a"
-                strokeWidth="2"
-              />
-              {/* 数据点标签 */}
-              <text
-                x={`${p.x}%`}
-                y={p.y - 10}
-                fill="#888"
-                fontSize="10"
-                textAnchor="middle"
-              >
-                {p.value.toFixed(1)}
-              </text>
-            </g>
-          ))}
+          {showDots && points.map((p, i) => {
+            // 根据数据量决定是否显示数值标签
+            const showValueLabel = data.length <= 30;
+            
+            return (
+              <g key={i}>
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r="4"
+                  fill={color}
+                  stroke="#1a1a1a"
+                  strokeWidth="2"
+                  vectorEffect="non-scaling-stroke"
+                />
+                {/* 数据点标签 - 数据太多时不显示 */}
+                {showValueLabel && (
+                  <text
+                    x={p.x}
+                    y={p.y - 10}
+                    fill="#888"
+                    fontSize="10"
+                    textAnchor="middle"
+                  >
+                    {p.value.toFixed(1)}
+                  </text>
+                )}
+              </g>
+            );
+          })}
         </svg>
       </div>
       
-      {/* X轴标签 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '11px', color: '#666' }}>
-        {points.map((p, i) => (
-          <div key={i} style={{ flex: 1, textAlign: i === 0 ? 'left' : i === points.length - 1 ? 'right' : 'center' }}>
-            {p.label}
-          </div>
-        ))}
+      {/* X轴标签 - 只显示关键标签避免重叠 */}
+      <div style={{ position: 'relative', marginTop: '10px', fontSize: '11px', color: '#666', height: '20px' }}>
+        {(() => {
+          // 根据数据量决定显示哪些标签
+          const totalPoints = points.length;
+          const labelsToShow: number[] = [];
+          
+          if (totalPoints <= 10) {
+            // 10个以内全部显示
+            labelsToShow.push(...Array.from({ length: totalPoints }, (_, i) => i));
+          } else if (totalPoints <= 30) {
+            // 每3个显示一个，加上最后一个
+            for (let i = 0; i < totalPoints; i += 3) {
+              labelsToShow.push(i);
+            }
+            if (!labelsToShow.includes(totalPoints - 1)) {
+              labelsToShow.push(totalPoints - 1);
+            }
+          } else if (totalPoints <= 50) {
+            // 每5个显示一个，加上最后一个
+            for (let i = 0; i < totalPoints; i += 5) {
+              labelsToShow.push(i);
+            }
+            if (!labelsToShow.includes(totalPoints - 1)) {
+              labelsToShow.push(totalPoints - 1);
+            }
+          } else {
+            // 每10个显示一个，加上最后一个
+            for (let i = 0; i < totalPoints; i += 10) {
+              labelsToShow.push(i);
+            }
+            if (!labelsToShow.includes(totalPoints - 1)) {
+              labelsToShow.push(totalPoints - 1);
+            }
+          }
+          
+          return labelsToShow.map(i => {
+            const p = points[i];
+            const leftPercent = (i / (totalPoints - 1)) * 100;
+            
+            return (
+              <div 
+                key={i} 
+                style={{ 
+                  position: 'absolute', 
+                  left: `${leftPercent}%`, 
+                  transform: 'translateX(-50%)',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {p.label}
+              </div>
+            );
+          });
+        })()}
       </div>
       
       {(xLabel || yLabel) && (
@@ -183,20 +240,37 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   color = '#4CAF50',
   trend
 }) => {
+  const [isHovered, setIsHovered] = React.useState(false);
   const trendIcon = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→';
   const trendColor = trend === 'up' ? '#4CAF50' : trend === 'down' ? '#f44336' : '#ff9800';
   
   return (
-    <div style={{ 
-      backgroundColor: '#1a1a1a', 
-      padding: '15px', 
-      borderRadius: '8px', 
-      border: '1px solid #333',
-      position: 'relative'
-    }}>
-      <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>{label}</div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
-        <div style={{ color, fontSize: '24px', fontWeight: 'bold' }}>
+    <div 
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{ 
+        background: isHovered 
+          ? 'linear-gradient(135deg, #252525 0%, #1a1a1a 100%)' 
+          : 'linear-gradient(135deg, #1a1a1a 0%, #252525 100%)',
+        padding: '20px', 
+        borderRadius: '12px', 
+        border: `1px solid ${isHovered ? color : 'rgba(76, 175, 80, 0.2)'}`,
+        position: 'relative',
+        boxShadow: isHovered 
+          ? `0 8px 24px rgba(0,0,0,0.4), 0 0 20px ${color}40` 
+          : '0 4px 16px rgba(0,0,0,0.2)',
+        transform: isHovered ? 'translateY(-4px)' : 'translateY(0)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        cursor: 'pointer'
+      }}>
+      <div style={{ color: '#888', fontSize: '12px', marginBottom: '10px', fontWeight: '500' }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+        <div style={{ 
+          color, 
+          fontSize: '28px', 
+          fontWeight: 'bold',
+          textShadow: `0 0 10px ${color}40`
+        }}>
           {typeof value === 'number' ? value.toFixed(2) : value}
         </div>
         {unit && <div style={{ color: '#666', fontSize: '14px' }}>{unit}</div>}
@@ -233,22 +307,41 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   showPercentage = true 
 }) => {
   const percentage = (value / max) * 100;
+  const [isHovered, setIsHovered] = React.useState(false);
   
   return (
-    <div style={{ marginBottom: '15px' }}>
+    <div 
+      style={{ marginBottom: '16px' }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
-        <span style={{ color: '#fff' }}>{label}</span>
-        <span style={{ color }}>
+        <span style={{ color: '#fff', fontWeight: '500' }}>{label}</span>
+        <span style={{ 
+          color, 
+          fontWeight: 'bold',
+          textShadow: isHovered ? `0 0 8px ${color}60` : 'none',
+          transition: 'all 0.3s ease'
+        }}>
           {showPercentage ? `${percentage.toFixed(1)}%` : `${value} / ${max}`}
         </span>
       </div>
-      <div style={{ backgroundColor: '#0a0a0a', height: '12px', borderRadius: '6px', overflow: 'hidden', position: 'relative' }}>
+      <div style={{ 
+        background: 'linear-gradient(90deg, #0a0a0a 0%, #151515 100%)', 
+        height: '12px', 
+        borderRadius: '6px', 
+        overflow: 'hidden', 
+        position: 'relative',
+        border: '1px solid rgba(255,255,255,0.05)',
+        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)'
+      }}>
         <div style={{ 
-          backgroundColor: color, 
+          background: `linear-gradient(90deg, ${color} 0%, ${color}dd 100%)`, 
           height: '100%', 
           width: `${Math.min(percentage, 100)}%`,
-          transition: 'width 0.5s ease',
-          borderRadius: '6px'
+          transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+          borderRadius: '6px',
+          boxShadow: isHovered ? `0 0 12px ${color}80` : `0 0 6px ${color}40`
         }} />
       </div>
     </div>
@@ -261,6 +354,8 @@ interface RiskBadgeProps {
 }
 
 export const RiskBadge: React.FC<RiskBadgeProps> = ({ level, size = 'medium' }) => {
+  const [isHovered, setIsHovered] = React.useState(false);
+  
   const config = {
     low: { color: '#4CAF50', label: '低风险', icon: '✓' },
     medium: { color: '#ff9800', label: '中风险', icon: '⚠' },
@@ -278,15 +373,27 @@ export const RiskBadge: React.FC<RiskBadgeProps> = ({ level, size = 'medium' }) 
   const { padding, fontSize } = sizeConfig[size];
   
   return (
-    <span style={{
-      backgroundColor: color,
-      color: '#fff',
-      padding,
-      fontSize,
-      borderRadius: '12px',
-      fontWeight: 'bold',
-      display: 'inline-block'
-    }}>
+    <span 
+      style={{
+        background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
+        color: '#fff',
+        padding,
+        fontSize,
+        borderRadius: '12px',
+        fontWeight: 'bold',
+        display: 'inline-block',
+        boxShadow: isHovered 
+          ? `0 4px 12px ${color}60, 0 0 16px ${color}40` 
+          : `0 2px 8px ${color}40`,
+        transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        cursor: 'default',
+        border: `1px solid ${color}`,
+        textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       {icon} {label}
     </span>
   );
@@ -299,24 +406,29 @@ interface DataTableProps {
 }
 
 export const DataTable: React.FC<DataTableProps> = ({ headers, rows, maxHeight = '400px' }) => {
+  const [hoveredRow, setHoveredRow] = React.useState<number | null>(null);
+  
   return (
     <div style={{ 
-      backgroundColor: '#1a1a1a', 
-      borderRadius: '8px', 
-      border: '1px solid #333',
-      overflow: 'hidden'
+      background: 'linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%)', 
+      borderRadius: '12px', 
+      border: '1px solid rgba(76, 175, 80, 0.2)',
+      overflow: 'hidden',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
     }}>
       <div style={{ maxHeight, overflow: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-          <thead style={{ position: 'sticky', top: 0, backgroundColor: '#2a2a2a', zIndex: 1 }}>
+          <thead style={{ position: 'sticky', top: 0, background: 'linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%)', zIndex: 1 }}>
             <tr>
               {headers.map((header, idx) => (
                 <th key={idx} style={{ 
-                  padding: '12px', 
+                  padding: '14px 12px', 
                   textAlign: 'left', 
                   color: '#4CAF50',
                   fontWeight: 'bold',
-                  borderBottom: '2px solid #4CAF50'
+                  borderBottom: '2px solid #4CAF50',
+                  textShadow: '0 0 8px rgba(76, 175, 80, 0.4)',
+                  fontSize: '14px'
                 }}>
                   {header}
                 </th>
@@ -325,12 +437,28 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, rows, maxHeight =
           </thead>
           <tbody>
             {rows.map((row, rowIdx) => (
-              <tr key={rowIdx} style={{ 
-                borderBottom: '1px solid #333',
-                backgroundColor: rowIdx % 2 === 0 ? '#1a1a1a' : '#0a0a0a'
-              }}>
+              <tr 
+                key={rowIdx} 
+                style={{ 
+                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  background: hoveredRow === rowIdx 
+                    ? 'linear-gradient(90deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%)'
+                    : rowIdx % 2 === 0 
+                      ? 'linear-gradient(90deg, #1a1a1a 0%, #151515 100%)' 
+                      : 'linear-gradient(90deg, #0f0f0f 0%, #0a0a0a 100%)',
+                  transition: 'all 0.3s ease',
+                  cursor: 'default'
+                }}
+                onMouseEnter={() => setHoveredRow(rowIdx)}
+                onMouseLeave={() => setHoveredRow(null)}
+              >
                 {row.map((cell, cellIdx) => (
-                  <td key={cellIdx} style={{ padding: '10px', color: '#fff' }}>
+                  <td key={cellIdx} style={{ 
+                    padding: '12px', 
+                    color: hoveredRow === rowIdx ? '#fff' : '#ddd',
+                    fontWeight: hoveredRow === rowIdx ? '500' : 'normal',
+                    transition: 'all 0.3s ease'
+                  }}>
                     {typeof cell === 'number' ? cell.toFixed(2) : cell}
                   </td>
                 ))}
@@ -383,6 +511,8 @@ interface AlertBoxProps {
 }
 
 export const AlertBox: React.FC<AlertBoxProps> = ({ type, title, message }) => {
+  const [isHovered, setIsHovered] = React.useState(false);
+  
   const config = {
     info: { color: '#2196F3', icon: 'ℹ', bg: 'rgba(33, 150, 243, 0.1)' },
     success: { color: '#4CAF50', icon: '✓', bg: 'rgba(76, 175, 80, 0.1)' },
@@ -393,19 +523,54 @@ export const AlertBox: React.FC<AlertBoxProps> = ({ type, title, message }) => {
   const { color, icon, bg } = config[type];
   
   return (
-    <div style={{
-      backgroundColor: bg,
-      border: `1px solid ${color}`,
-      borderRadius: '8px',
-      padding: '15px',
-      display: 'flex',
-      gap: '12px',
-      alignItems: 'flex-start'
-    }}>
-      <div style={{ color, fontSize: '24px', marginTop: '2px' }}>{icon}</div>
+    <div 
+      style={{
+        background: isHovered 
+          ? `linear-gradient(135deg, ${bg} 0%, ${color}15 100%)`
+          : bg,
+        border: `1px solid ${color}`,
+        borderRadius: '12px',
+        padding: '16px',
+        display: 'flex',
+        gap: '12px',
+        alignItems: 'flex-start',
+        boxShadow: isHovered 
+          ? `0 6px 20px ${color}30, inset 0 1px 0 ${color}20`
+          : `0 2px 10px ${color}20`,
+        transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        cursor: 'default'
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div style={{ 
+        color, 
+        fontSize: '24px', 
+        marginTop: '2px',
+        textShadow: isHovered ? `0 0 8px ${color}60` : 'none',
+        transition: 'all 0.3s ease'
+      }}>
+        {icon}
+      </div>
       <div style={{ flex: 1 }}>
-        <div style={{ color, fontWeight: 'bold', marginBottom: '5px' }}>{title}</div>
-        <div style={{ color: '#fff', fontSize: '13px' }}>{message}</div>
+        <div style={{ 
+          color, 
+          fontWeight: 'bold', 
+          marginBottom: '6px',
+          fontSize: '14px',
+          textShadow: isHovered ? `0 0 6px ${color}40` : 'none',
+          transition: 'all 0.3s ease'
+        }}>
+          {title}
+        </div>
+        <div style={{ 
+          color: '#fff', 
+          fontSize: '13px',
+          lineHeight: '1.5'
+        }}>
+          {message}
+        </div>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import {
   AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
+import ChartDrilldownModal from './ChartDrilldownModal';
 
 const ChartsPanel: React.FC<{ hazards: any[] }> = ({ hazards }) => {
   const [pythonStats, setPythonStats] = useState<any>(null);
@@ -14,6 +15,15 @@ const ChartsPanel: React.FC<{ hazards: any[] }> = ({ hazards }) => {
   const [activeChart, setActiveChart] = useState<'pie' | 'bar' | 'line' | 'area'>('pie');
   const [chartError, setChartError] = useState<string>('');
   const [autoRefresh, setAutoRefresh] = useState(false);
+  
+  // 钻取功能状态
+  const [isDrilldownOpen, setIsDrilldownOpen] = useState(false);
+  const [drilldownData, setDrilldownData] = useState<{
+    title: string;
+    filteredHazards: any[];
+    drilldownType: 'type' | 'severity' | 'source' | 'date';
+    drilldownValue: string;
+  } | null>(null);
 
   const hazardsByType = hazards.reduce((acc, h) => {
     const type = h.type || h.properties?.type || '未分类';
@@ -52,6 +62,55 @@ const ChartsPanel: React.FC<{ hazards: any[] }> = ({ hazards }) => {
   }, [hazards]);
 
   const COLORS = ['#4CAF50', '#FF9800', '#2196F3', '#F44336', '#9C27B0', '#00BCD4', '#FFEB3B'];
+
+  // 处理图表点击事件（钻取功能）
+  const handleChartClick = (data: any, drilldownType: 'type' | 'severity' | 'source' | 'date') => {
+    console.log('Chart clicked:', data, drilldownType);
+    if (!data || !data.name) {
+      console.warn('Invalid data for drilldown:', data);
+      return;
+    }
+    
+    const value = data.name;
+    let filtered: any[] = [];
+    let title = '';
+    
+    switch (drilldownType) {
+      case 'type':
+        filtered = hazards.filter(h => {
+          const type = h.type || h.properties?.type || '未分类';
+          return type === value;
+        });
+        title = `灾害类型：${value} (${filtered.length}条)`;
+        break;
+      case 'severity':
+        filtered = hazards.filter(h => {
+          const severity = h.properties?.severity || '未知';
+          return severity === value;
+        });
+        title = `严重性级别：${value} (${filtered.length}条)`;
+        break;
+      case 'date':
+        filtered = hazards.filter(h => {
+          const date = h.properties?.timestamp ? new Date(h.properties.timestamp).toLocaleDateString('zh-CN') : '未知日期';
+          return date === value;
+        });
+        title = `日期：${value} (${filtered.length}条)`;
+        break;
+      default:
+        filtered = hazards;
+        title = `全部数据 (${filtered.length}条)`;
+    }
+    
+    console.log('Setting drilldown data:', { title, filtered: filtered.length, drilldownType, value });
+    setDrilldownData({
+      title,
+      filteredHazards: filtered,
+      drilldownType,
+      drilldownValue: value
+    });
+    setIsDrilldownOpen(true);
+  };
 
   useEffect(() => {
     if (hazards.length > 0) {
@@ -92,12 +151,26 @@ const ChartsPanel: React.FC<{ hazards: any[] }> = ({ hazards }) => {
   return (
     <div style={{ backgroundColor: '#1a1a1a', padding: '20px', borderRadius: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h3 style={{ color: '#4CAF50', margin: 0 }}>📊 4类交互式分析图表</h3>
-        {loading && <span style={{ color: '#888', fontSize: '12px' }}>加载中...</span>}
+        <h3 style={{ color: '#4CAF50', margin: 0 }}>
+          📊 4类交互式分析图表
+        </h3>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {loading && <span style={{ color: '#888', fontSize: '12px' }}>加载中...</span>}
+          {chartError && <span style={{ color: '#ff6b6b', fontSize: '12px' }}>⚠️ {chartError}</span>}
+          <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#888', cursor: 'pointer' }}>
+            <input 
+              type="checkbox" 
+              checked={autoRefresh} 
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            自动刷新
+          </label>
+        </div>
       </div>
 
       {/* 图表切换按钮 */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
         <button
           onClick={() => setActiveChart('pie')}
           style={{
@@ -168,21 +241,33 @@ const ChartsPanel: React.FC<{ hazards: any[] }> = ({ hazards }) => {
       <div style={{ height: '400px', marginBottom: '20px' }}>
         {activeChart === 'pie' && (
           <div>
-            <h4 style={{ color: '#4CAF50', fontSize: '14px', marginBottom: '10px' }}>🥧 灾害类型分布（饼图）</h4>
+            <h4 style={{ color: '#4CAF50', fontSize: '14px', marginBottom: '10px' }}>
+              🥧 灾害类型分布（饼图）<span style={{ color: '#888', fontSize: '12px', marginLeft: '10px' }}>💡 点击扇区查看详情</span>
+            </h4>
             <ResponsiveContainer width="100%" height={350}>
-              <PieChart>
+              <PieChart onClick={(e) => {
+                console.log('PieChart clicked:', e);
+              }}>
                 <Pie
                   data={chartData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
                   outerRadius={120}
                   fill="#8884d8"
                   dataKey="value"
+                  onClick={(data, index, e) => {
+                    console.log('Pie segment clicked:', { data, index, e });
+                    handleChartClick(data, 'type');
+                  }}
+                  style={{ cursor: 'pointer' }}
                 >
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {chartData.map((_entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip 
@@ -200,7 +285,9 @@ const ChartsPanel: React.FC<{ hazards: any[] }> = ({ hazards }) => {
 
         {activeChart === 'bar' && (
           <div>
-            <h4 style={{ color: '#FF9800', fontSize: '14px', marginBottom: '10px' }}>📊 灾害类型统计（柱状图）</h4>
+            <h4 style={{ color: '#FF9800', fontSize: '14px', marginBottom: '10px' }}>
+              📊 灾害类型统计（柱状图）<span style={{ color: '#888', fontSize: '12px', marginLeft: '10px' }}>💡 点击柱形查看详情</span>
+            </h4>
             <ResponsiveContainer width="100%" height={350}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#444" />
@@ -218,7 +305,16 @@ const ChartsPanel: React.FC<{ hazards: any[] }> = ({ hazards }) => {
                   cursor={{ fill: 'rgba(255, 152, 0, 0.1)' }}
                 />
                 <Legend wrapperStyle={{ color: '#fff' }} />
-                <Bar dataKey="value" fill="#FF9800" name="数量" />
+                <Bar 
+                  dataKey="value" 
+                  fill="#FF9800" 
+                  name="数量" 
+                  onClick={(data, index) => {
+                    console.log('Bar clicked:', { data, index });
+                    handleChartClick(data, 'type');
+                  }}
+                  cursor="pointer"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -259,7 +355,9 @@ const ChartsPanel: React.FC<{ hazards: any[] }> = ({ hazards }) => {
 
         {activeChart === 'area' && (
           <div>
-            <h4 style={{ color: '#9C27B0', fontSize: '14px', marginBottom: '10px' }}>📉 严重性分布（面积图）</h4>
+            <h4 style={{ color: '#9C27B0', fontSize: '14px', marginBottom: '10px' }}>
+              📉 严重性分布（面积图）<span style={{ color: '#888', fontSize: '12px', marginLeft: '10px' }}>💡 点击区域查看详情</span>
+            </h4>
             <ResponsiveContainer width="100%" height={350}>
               <AreaChart data={severityData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#444" />
@@ -277,6 +375,11 @@ const ChartsPanel: React.FC<{ hazards: any[] }> = ({ hazards }) => {
                   fill="#9C27B0"
                   fillOpacity={0.6}
                   name="数量"
+                  onClick={(data, index) => {
+                    console.log('Area clicked:', { data, index });
+                    handleChartClick(data, 'severity');
+                  }}
+                  cursor="pointer"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -337,6 +440,26 @@ const ChartsPanel: React.FC<{ hazards: any[] }> = ({ hazards }) => {
             )}
           </div>
         </div>
+      )}
+
+      {/* 钻取弹窗 */}
+      {isDrilldownOpen && drilldownData ? (
+        <>
+          {console.log('Rendering modal:', { isDrilldownOpen, drilldownData })}
+          <ChartDrilldownModal
+            isOpen={isDrilldownOpen}
+            onClose={() => {
+              console.log('Closing modal');
+              setIsDrilldownOpen(false);
+            }}
+            title={drilldownData.title}
+            filteredHazards={drilldownData.filteredHazards}
+            drilldownType={drilldownData.drilldownType}
+            drilldownValue={drilldownData.drilldownValue}
+          />
+        </>
+      ) : (
+        console.log('Modal not rendered:', { isDrilldownOpen, hasDrilldownData: !!drilldownData })
       )}
     </div>
   );

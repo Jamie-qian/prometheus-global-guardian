@@ -416,3 +416,180 @@ function formatHazards(hazards: any[]): HazardData[] {
     populationExposed: h.properties?.populationExposed ? Number(h.properties.populationExposed) : null
   }));
 }
+
+// ==================== 4维数据透视表API ====================
+
+/**
+ * 创建4维数据透视表（时间×地理×类型×严重性）
+ */
+export async function create4DPivotTable(
+  hazards: any[],
+  options?: {
+    timeDim?: 'year' | 'quarter' | 'month' | 'week' | 'day' | 'date_only';
+    geoDim?: 'region' | 'continent' | 'geo_grid';
+    aggfunc?: 'count' | 'sum' | 'mean';
+  }
+): Promise<any> {
+  try {
+    const formattedData = formatHazards(hazards);
+    
+    const response = await fetchWithRetry(
+      `${API_BASE_URL}/api/v1/pivot/create`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: formattedData,
+          time_dim: options?.timeDim || 'month',
+          geo_dim: options?.geoDim || 'region',
+          aggfunc: options?.aggfunc || 'count'
+        })
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to create 4D pivot table');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('4D pivot table creation failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * 多维度联合查询
+ */
+export async function multiDimensionalQuery(
+  hazards: any[],
+  filters: {
+    timeRange?: [string, string];
+    regions?: string[];
+    types?: string[];
+    severities?: string[];
+  }
+): Promise<any> {
+  try {
+    const formattedData = formatHazards(hazards);
+    
+    const response = await fetchWithRetry(
+      `${API_BASE_URL}/api/v1/pivot/query`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: formattedData,
+          time_range: filters.timeRange,
+          regions: filters.regions,
+          types: filters.types,
+          severities: filters.severities
+        })
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error('Multi-dimensional query failed');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Multi-dimensional query failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * 4维趋势分析
+ */
+export async function analyze4DTrends(
+  hazards: any[],
+  timeWindow: number = 7
+): Promise<any> {
+  try {
+    const formattedData = formatHazards(hazards);
+    
+    const response = await fetchWithRetry(
+      `${API_BASE_URL}/api/v1/pivot/trend-analysis`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: formattedData,
+          time_window: timeWindow
+        })
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error('4D trend analysis failed');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('4D trend analysis failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * 4维风险评分
+ */
+export async function calculate4DRiskScores(
+  hazards: any[],
+  timeWindow: number = 7
+): Promise<any> {
+  try {
+    const formattedData = formatHazards(hazards);
+    
+    const response = await fetchWithRetry(
+      `${API_BASE_URL}/api/v1/pivot/risk-score`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: formattedData,
+          time_window: timeWindow
+        })
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error('4D risk scoring failed');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('4D risk scoring failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * 获取4维数据汇总统计
+ */
+export async function get4DSummary(hazards: any[]): Promise<any> {
+  try {
+    const formattedData = formatHazards(hazards);
+    
+    const response = await fetchWithRetry(
+      `${API_BASE_URL}/api/v1/pivot/summary`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: formattedData
+        })
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to get 4D summary');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('4D summary fetch failed:', error);
+    throw error;
+  }
+}

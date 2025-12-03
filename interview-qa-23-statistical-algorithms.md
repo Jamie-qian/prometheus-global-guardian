@@ -43,7 +43,7 @@
 
 #### 1. 频率统计 (Frequency Analysis)
 **算法公式**：
-```typescript
+```python
 频率 = 某类别出现次数 / 总样本数
 百分比 = 频率 × 100%
 ```
@@ -67,7 +67,7 @@ def get_type_distribution(df: pd.DataFrame) -> Dict[str, Any]:
 
 #### 2. 算术平均值 (Arithmetic Mean)
 **算法公式**：
-```typescript
+```python
 μ = Σxi / n
 其中：xi为第i个观测值，n为样本数量
 ```
@@ -83,7 +83,7 @@ average_magnitude = np.mean(df['magnitude'].dropna())
 
 #### 3. 中位数 (Median)
 **算法公式**：
-```typescript
+```python
 对于奇数个数据：Median = x[(n+1)/2]
 对于偶数个数据：Median = [x[n/2] + x[n/2+1]] / 2
 ```
@@ -100,7 +100,7 @@ median = df['magnitude'].median()
 
 #### 4. 众数 (Mode)
 **算法公式**：
-```typescript
+```python
 Mode = 出现频率最高的数值
 ```
 
@@ -117,7 +117,7 @@ mode = stats.mode(df['magnitude'].dropna())[0]
 
 #### 5. 标准差 (Standard Deviation)
 **算法公式**：
-```typescript
+```python
 σ = √[Σ(xi - μ)² / n]
 ```
 
@@ -133,7 +133,7 @@ std_dev = df['magnitude'].std()
 
 #### 6. 极值统计 (Min/Max)
 **算法公式**：
-```typescript
+```python
 Maximum = max(x₁, x₂, ..., xₙ)
 Minimum = min(x₁, x₂, ..., xₙ)
 Range = Maximum - Minimum
@@ -151,7 +151,7 @@ range_val = max_magnitude - min_magnitude
 
 #### 7. 四分位数 (Quartiles)
 **算法公式**：
-```typescript
+```python
 Q1 = 第25百分位数
 Q2 = 第50百分位数（中位数）
 Q3 = 第75百分位数
@@ -171,7 +171,7 @@ iqr = q3 - q1  # 四分位距
 
 #### 8. 分布偏度与峰度 (Skewness & Kurtosis)
 **算法公式**：
-```typescript
+```python
 偏度 = E[(X-μ)³] / σ³
 峰度 = E[(X-μ)⁴] / σ⁴ - 3
 ```
@@ -190,59 +190,60 @@ kurtosis = stats.kurtosis(df['magnitude'].dropna())
 
 #### 9. 置信区间估计 (Confidence Interval)
 **算法公式**：
-```typescript
+```python
 CI = x̄ ± (t_{α/2} × s/√n)
 其中：x̄为样本均值，s为样本标准差，n为样本量
 ```
 
 **代码实现**：
-```typescript
-function calculateConfidenceInterval(values: number[], confidence: number = 0.95): 
-  {lower: number, upper: number} {
-  const mean = values.reduce((a, b) => a + b) / values.length;
-  const stdDev = Math.sqrt(values.reduce((sum, val) => 
-    sum + Math.pow(val - mean, 2), 0) / values.length);
-  const margin = 1.96 * stdDev / Math.sqrt(values.length); // 95%置信度
-  
-  return {
-    lower: mean - margin,
-    upper: mean + margin
-  };
-}
+```python
+import numpy as np
+from scipy import stats
+
+def calculate_confidence_interval(values: np.ndarray, confidence: float = 0.95) -> dict:
+    """计算置信区间"""
+    n = len(values)
+    mean = np.mean(values)
+    std_err = stats.sem(values)  # 标准误差
+    margin = std_err * stats.t.ppf((1 + confidence) / 2, n - 1)
+    
+    return {
+        'lower': mean - margin,
+        'upper': mean + margin,
+        'mean': mean
+    }
 ```
 
 **业务应用**：日灾害数95%置信区间[10.2, 13.8]，为容量规划提供统计依据
 
 #### 10. 假设检验 - t检验 (T-Test)
 **算法公式**：
-```typescript
+```python
 t = (x̄ - μ₀) / (s/√n)
 自由度 df = n - 1
 ```
 
 **代码实现**：
-```typescript
-function performTTest(sample: number[], populationMean: number): 
-  {tStatistic: number, pValue: number} {
-  const n = sample.length;
-  const sampleMean = sample.reduce((a, b) => a + b) / n;
-  const sampleStd = Math.sqrt(sample.reduce((sum, val) => 
-    sum + Math.pow(val - sampleMean, 2), 0) / (n - 1));
-  
-  const tStatistic = (sampleMean - populationMean) / (sampleStd / Math.sqrt(n));
-  
-  return {
-    tStatistic,
-    pValue: calculatePValue(tStatistic, n - 1)
-  };
-}
+```python
+from scipy import stats
+import numpy as np
+
+def perform_t_test(sample: np.ndarray, population_mean: float) -> dict:
+    """单样本t检验"""
+    t_statistic, p_value = stats.ttest_1samp(sample, population_mean)
+    
+    return {
+        't_statistic': t_statistic,
+        'p_value': p_value,
+        'significant': p_value < 0.05
+    }
 ```
 
 **业务应用**：验证当前月灾害活动是否显著高于历史均值，p<0.05拒绝原假设
 
 #### 11. 卡方检验 (Chi-Square Test)
 **算法公式**：
-```typescript
+```python
 χ² = Σ[(观察频数 - 期望频数)² / 期望频数]
 ```
 
@@ -258,7 +259,7 @@ chi_square, p_value = chisquare(observed, expected)
 
 #### 12. 方差分析 (ANOVA)
 **算法公式**：
-```typescript
+```python
 F = MSB / MSW
 其中：MSB为组间均方，MSW为组内均方
 ```
@@ -279,7 +280,7 @@ anova_table = sm.stats.anova_lm(model, typ=2)
 
 #### 13. 回归分析显著性检验 (Regression Significance)
 **算法公式**：
-```typescript
+```python
 R² = 1 - (SSE / SST)
 其中：SSE为误差平方和，SST为总平方和
 ```
@@ -302,7 +303,7 @@ adjusted_r_squared = 1 - (1 - r_squared) * (n - 1) / (n - p - 1)
 
 #### 14. 正态性检验 (Normality Test)
 **算法公式**：
-```typescript
+```python
 Shapiro-Wilk统计量：W = (Σaᵢx(ᵢ))² / Σ(xᵢ - x̄)²
 ```
 
@@ -323,36 +324,25 @@ statistic, p_value = normaltest(df['magnitude'].dropna())
 
 #### 15. 非参数检验 - Mann-Whitney U (Non-parametric Test)
 **算法公式**：
-```typescript
+```python
 U = n₁n₂ + n₁(n₁+1)/2 - R₁
 其中：R₁为第一组秩和
 ```
 
 **代码实现**：
-```typescript
-function mannWhitneyU(group1: number[], group2: number[]): 
-  {uStatistic: number, pValue: number} {
-  const combined = [...group1.map(v => ({ value: v, group: 1 })),
-                    ...group2.map(v => ({ value: v, group: 2 }))];
-  
-  combined.sort((a, b) => a.value - b.value);
-  
-  let rank = 1;
-  const ranks = combined.map((item, i) => {
-    // 处理相同值的平均秩
-    return { ...item, rank: rank++ };
-  });
-  
-  const r1 = ranks.filter(r => r.group === 1).reduce((sum, r) => sum + r.rank, 0);
-  const n1 = group1.length;
-  const n2 = group2.length;
-  
-  const u1 = n1 * n2 + n1 * (n1 + 1) / 2 - r1;
-  const u2 = n1 * n2 - u1;
-  const uStatistic = Math.min(u1, u2);
-  
-  return { uStatistic, pValue: calculateMWPValue(uStatistic, n1, n2) };
-}
+```python
+from scipy import stats
+import numpy as np
+
+def mann_whitney_u(group1: np.ndarray, group2: np.ndarray) -> dict:
+    """Mann-Whitney U检验（非参数检验）"""
+    u_statistic, p_value = stats.mannwhitneyu(group1, group2, alternative='two-sided')
+    
+    return {
+        'u_statistic': u_statistic,
+        'p_value': p_value,
+        'significant': p_value < 0.05
+    }
 ```
 
 **业务应用**：比较南北半球地震强度差异，U=892, p=0.031存在显著差异
@@ -361,41 +351,36 @@ function mannWhitneyU(group1: number[], group2: number[]):
 
 #### 16. 移动平均 (Moving Average)
 **算法公式**：
-```typescript
+```python
 MA(k) = [x(t-k+1) + x(t-k+2) + ... + x(t)] / k
 ```
 
 **代码实现**：
-```typescript
-function movingAverage(values: number[], window: number): number[] {
-  const result: number[] = [];
-  
-  for (let i = window - 1; i < values.length; i++) {
-    const sum = values.slice(i - window + 1, i + 1)
-                     .reduce((a, b) => a + b, 0);
-    result.push(sum / window);
-  }
-  
-  return result;
-}
+```python
+import pandas as pd
+import numpy as np
 
-// 实际应用：7天、14天、30天移动平均
-const ma7 = movingAverage(dailyHazardCounts, 7);
-const ma14 = movingAverage(dailyHazardCounts, 14);
-const ma30 = movingAverage(dailyHazardCounts, 30);
+def moving_average(values: np.ndarray, window: int) -> np.ndarray:
+    """计算移动平均"""
+    return pd.Series(values).rolling(window=window).mean().values
+
+# 实际应用：7天、14天、30天移动平均
+ma7 = moving_average(daily_hazard_counts, 7)
+ma14 = moving_average(daily_hazard_counts, 14)
+ma30 = moving_average(daily_hazard_counts, 30)
 ```
 
 **业务应用**：7天MA平滑短期波动，30天MA识别长期趋势，噪声降低45%
 
 #### 17. 趋势分析 (Trend Analysis)
 **算法公式**：
-```typescript
+```python
 斜率 β = [nΣxy - ΣxΣy] / [nΣx² - (Σx)²]
 趋势方向 = sign(β)
 ```
 
 **代码实现**：
-```typescript
+```python
 # SciPy一行实现线性回归趋势分析
 from scipy.stats import linregress
 
@@ -418,12 +403,12 @@ r_squared = r_value ** 2
 
 #### 18. 季节性分解 (Seasonal Decomposition)
 **算法公式**：
-```typescript
+```python
 X(t) = Trend(t) + Seasonal(t) + Residual(t)
 ```
 
 **代码实现**：
-```typescript
+```python
 # statsmodels提供专业的季节性分解（STL/Classical）
 from statsmodels.tsa.seasonal import seasonal_decompose
 
@@ -445,12 +430,12 @@ residual = decomposition.resid
 
 #### 19. 自相关分析 (Autocorrelation)
 **算法公式**：
-```typescript
+```python
 r(k) = Σ(xₜ - x̄)(xₜ₊ₖ - x̄) / Σ(xₜ - x̄)²
 ```
 
 **代码实现**：
-```typescript
+```python
 # statsmodels提供专业的ACF/PACF分析
 from statsmodels.tsa.stattools import acf, pacf
 import matplotlib.pyplot as plt
@@ -473,85 +458,73 @@ plot_pacf(values, lags=max_lag)
 
 #### 20. 皮尔逊相关系数 (Pearson Correlation)
 **算法公式**：
-```typescript
+```python
 r = Σ(xᵢ - x̄)(yᵢ - ȳ) / √[Σ(xᵢ - x̄)²Σ(yᵢ - ȳ)²]
 ```
 
 **代码实现**：
-```typescript
-function pearsonCorrelation(x: number[], y: number[]): number {
-  const n = x.length;
-  const meanX = x.reduce((a, b) => a + b) / n;
-  const meanY = y.reduce((a, b) => a + b) / n;
-  
-  const numerator = x.reduce((sum, xi, i) => 
-    sum + (xi - meanX) * (y[i] - meanY), 0);
-  
-  const denomX = Math.sqrt(x.reduce((sum, xi) => 
-    sum + Math.pow(xi - meanX, 2), 0));
-  const denomY = Math.sqrt(y.reduce((sum, yi) => 
-    sum + Math.pow(yi - meanY, 2), 0));
-  
-  return numerator / (denomX * denomY);
-}
+```python
+import numpy as np
+from scipy.stats import pearsonr
+import pandas as pd
 
-// 实际应用
-export function analyzeTypeSeverityCorrelation(hazards: Hazard[]) {
-  const earthquakes = hazards.filter(h => h.type === 'EARTHQUAKE');
-  const highSeverity = earthquakes.filter(h => h.severity === 'WARNING');
-  
-  const correlation = pearsonCorrelation(
-    earthquakes.map(h => h.magnitude || 0),
-    earthquakes.map(h => h.severity === 'WARNING' ? 1 : 0)
-  );
-  
-  return { type: 'EARTHQUAKE', severity: 'WARNING', correlation: 0.73 };
-}
+def pearson_correlation(x: np.ndarray, y: np.ndarray) -> dict:
+    """计算皮尔逊相关系数"""
+    r, p_value = pearsonr(x, y)
+    return {
+        'correlation': r,
+        'p_value': p_value,
+        'significant': p_value < 0.05
+    }
+
+# 实际应用
+def analyze_type_severity_correlation(df: pd.DataFrame) -> dict:
+    """分析灾害类型与严重性的相关性"""
+    earthquakes = df[df['type'] == 'EARTHQUAKE'].copy()
+    earthquakes['is_warning'] = (earthquakes['severity'] == 'WARNING').astype(int)
+    
+    r, p_value = pearsonr(
+        earthquakes['magnitude'].fillna(0),
+        earthquakes['is_warning']
+    )
+    
+    return {
+        'type': 'EARTHQUAKE',
+        'severity': 'WARNING',
+        'correlation': r,
+        'p_value': p_value
+    }
 ```
 
 **业务应用**：地震震级与WARNING级别相关性r=0.73，强相关关系
 
 #### 21. 斯皮尔曼等级相关 (Spearman Rank Correlation)
 **算法公式**：
-```typescript
+```python
 ρ = 1 - [6Σdᵢ²] / [n(n² - 1)]
 其中：dᵢ为第i对数据的秩差
 ```
 
 **代码实现**：
-```typescript
-function spearmanCorrelation(x: number[], y: number[]): number {
-  const n = x.length;
-  
-  // 计算秩
-  const rankX = calculateRanks(x);
-  const rankY = calculateRanks(y);
-  
-  // 计算秩差的平方和
-  const sumD2 = rankX.reduce((sum, rx, i) => 
-    sum + Math.pow(rx - rankY[i], 2), 0);
-  
-  return 1 - (6 * sumD2) / (n * (n * n - 1));
-}
+```python
+from scipy.stats import spearmanr
+import numpy as np
 
-function calculateRanks(values: number[]): number[] {
-  const indexed = values.map((val, i) => ({ val, index: i }));
-  indexed.sort((a, b) => a.val - b.val);
-  
-  const ranks = new Array(values.length);
-  indexed.forEach((item, rank) => {
-    ranks[item.index] = rank + 1;
-  });
-  
-  return ranks;
-}
+def spearman_correlation(x: np.ndarray, y: np.ndarray) -> dict:
+    """计算斯皮尔曼等级相关系数"""
+    rho, p_value = spearmanr(x, y)
+    return {
+        'correlation': rho,
+        'p_value': p_value,
+        'significant': p_value < 0.05
+    }
 ```
 
 **业务应用**：非参数相关性分析，地震深度与强度ρ=-0.45，中度负相关
 
 #### 22. 肯德尔τ相关系数 (Kendall's Tau)
 **算法公式**：
-```typescript
+```python
 τ = (一致对数 - 不一致对数) / 总对数
 τ = (C - D) / [n(n-1)/2]
 ```
@@ -571,7 +544,7 @@ tau, p_value = kendalltau(x, y)
 
 #### 23. 异常检测 - 3σ原则 (Outlier Detection)
 **算法公式**：
-```typescript
+```python
 异常值判断：|xᵢ - μ| > 3σ
 其中：μ为均值，σ为标准差
 ```

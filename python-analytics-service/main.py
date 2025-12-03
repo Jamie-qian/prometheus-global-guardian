@@ -28,6 +28,7 @@ from analytics.statistical_algorithms import StatisticalAnalyzer
 from analytics.prediction_models import PredictionEngine
 from analytics.etl_processor import ETLProcessor
 from analytics.risk_assessment import RiskAssessor
+from analytics.pivot_table_analyzer import FourDimensionalPivotTable
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -434,6 +435,256 @@ async def get_quality_history(limit: int = 10):
     except Exception as e:
         logger.error(f"Quality history error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== 4维数据透视表API端点 ====================
+
+@app.post("/api/v1/pivot/create")
+async def create_4d_pivot_table(request: AnalysisRequest):
+    """创建4维数据透视表（时间×地理×类型×严重性）
+    
+    Query Parameters:
+        - time_dim: 时间维度 (year/quarter/month/week/day/date_only)
+        - geo_dim: 地理维度 (region/continent/geo_grid)
+        - type_dim: 类型维度 (type_category)
+        - severity_dim: 严重性维度 (severity)
+        - aggfunc: 聚合函数 (count/sum/mean)
+    """
+    try:
+        start_time = asyncio.get_event_loop().time()
+        df = pd.DataFrame([h.dict() for h in request.hazards])
+        
+        # 创建4维透视表分析器
+        analyzer = FourDimensionalPivotTable(df)
+        
+        # 构建透视表
+        pivot_table = analyzer.create_4d_pivot(
+            time_dim=request.time_dim if hasattr(request, 'time_dim') else 'month',
+            geo_dim=request.geo_dim if hasattr(request, 'geo_dim') else 'region',
+            type_dim='type_category',
+            severity_dim='severity',
+            aggfunc='count'
+        )
+        
+        # 获取汇总统计
+        summary = analyzer.get_summary_statistics()
+        
+        # 导出为字典格式
+        pivot_dict = analyzer.export_pivot_to_dict(pivot_table)
+        
+        processing_time = asyncio.get_event_loop().time() - start_time
+        
+        logger.info(f"4维透视表创建成功，处理时间: {processing_time:.3f}s")
+        
+        return {
+            "success": True,
+            "data": {
+                "pivot_table": pivot_dict,
+                "summary": summary,
+                "dimensions": {
+                    "rows": len(pivot_table.index),
+                    "columns": len(pivot_table.columns)
+                }
+            },
+            "processingTime": processing_time,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"4D pivot creation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/pivot/query")
+async def multi_dimensional_query(request: AnalysisRequest):
+    """多维度联合查询
+    
+    Request Body:
+        - hazards: 数据列表
+        - time_range: 时间范围 [start_date, end_date]
+        - regions: 地理区域列表
+        - types: 灾害类型列表
+        - severities: 严重性级别列表
+    """
+    try:
+        start_time = asyncio.get_event_loop().time()
+        df = pd.DataFrame([h.dict() for h in request.hazards])
+        
+        analyzer = FourDimensionalPivotTable(df)
+        
+        # 解析查询参数
+        time_range = None
+        if hasattr(request, 'time_range') and request.time_range:
+            time_range = (
+                pd.to_datetime(request.time_range[0]),
+                pd.to_datetime(request.time_range[1])
+            )
+        
+        regions = getattr(request, 'regions', None)
+        types = getattr(request, 'types', None)
+        severities = getattr(request, 'severities', None)
+        
+        # 执行多维度查询
+        result_df = analyzer.multi_dimensional_query(
+            time_range=time_range,
+            regions=regions,
+            types=types,
+            severities=severities
+        )
+        
+        processing_time = asyncio.get_event_loop().time() - start_time
+        
+        return {
+            "success": True,
+            "data": {
+                "results": result_df.to_dict('records'),
+                "total_count": len(result_df),
+                "query_params": {
+                    "time_range": request.time_range if hasattr(request, 'time_range') else None,
+                    "regions": regions,
+                    "types": types,
+                    "severities": severities
+                }
+            },
+            "processingTime": processing_time,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Multi-dimensional query error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/pivot/trend-analysis")
+async def analyze_4d_trends(request: AnalysisRequest):
+    """4维趋势分析（识别上升/下降趋势）
+    
+    Query Parameters:
+        - time_window: 时间窗口（天数，默认7天）
+    """
+    try:
+        start_time = asyncio.get_event_loop().time()
+        df = pd.DataFrame([h.dict() for h in request.hazards])
+        
+        analyzer = FourDimensionalPivotTable(df)
+        
+        time_window = getattr(request, 'time_window', 7)
+        
+        # 执行趋势分析
+        trend_df = analyzer.trend_analysis_4d(time_window=time_window)
+        
+        if trend_df.empty:
+            return {
+                "success": True,
+                "data": {
+                    "trends": [],
+                    "message": "时间窗口内数据不足"
+                },
+                "processingTime": asyncio.get_event_loop().time() - start_time,
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        # 提取上升趋势的高危组合
+        high_risk_trends = trend_df[
+            (trend_df['trend_direction'] == 'increasing') &
+            (trend_df['severity'] == 'WARNING')
+        ].sort_values('trend_slope', ascending=False)
+        
+        processing_time = asyncio.get_event_loop().time() - start_time
+        
+        return {
+            "success": True,
+            "data": {
+                "all_trends": trend_df.to_dict('records'),
+                "high_risk_trends": high_risk_trends.to_dict('records'),
+                "statistics": {
+                    "total_combinations": len(trend_df),
+                    "increasing": len(trend_df[trend_df['trend_direction'] == 'increasing']),
+                    "stable": len(trend_df[trend_df['trend_direction'] == 'stable']),
+                    "decreasing": len(trend_df[trend_df['trend_direction'] == 'decreasing']),
+                    "high_risk_count": len(high_risk_trends)
+                },
+                "time_window": time_window
+            },
+            "processingTime": processing_time,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"4D trend analysis error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/pivot/risk-score")
+async def calculate_4d_risk_scores(request: AnalysisRequest):
+    """4维风险评分（综合时间、地理、类型、严重性）
+    
+    Query Parameters:
+        - time_window: 时间窗口（天数，默认7天）
+    """
+    try:
+        start_time = asyncio.get_event_loop().time()
+        df = pd.DataFrame([h.dict() for h in request.hazards])
+        
+        analyzer = FourDimensionalPivotTable(df)
+        
+        time_window = getattr(request, 'time_window', 7)
+        
+        # 计算风险评分
+        risk_df = analyzer.risk_score_4d(time_window=time_window)
+        
+        if risk_df.empty:
+            return {
+                "success": True,
+                "data": {
+                    "risk_scores": [],
+                    "message": "时间窗口内数据不足"
+                },
+                "processingTime": asyncio.get_event_loop().time() - start_time,
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        # Top 10 高风险区域
+        top_risks = risk_df.head(10)
+        
+        processing_time = asyncio.get_event_loop().time() - start_time
+        
+        return {
+            "success": True,
+            "data": {
+                "all_risk_scores": risk_df.to_dict('records'),
+                "top_10_risks": top_risks.to_dict('records'),
+                "statistics": {
+                    "total_combinations": len(risk_df),
+                    "max_risk_score": float(risk_df['risk_score'].max()),
+                    "avg_risk_score": float(risk_df['risk_score'].mean()),
+                    "min_risk_score": float(risk_df['risk_score'].min())
+                },
+                "time_window": time_window
+            },
+            "processingTime": processing_time,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"4D risk scoring error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/pivot/summary")
+async def get_4d_summary(request: AnalysisRequest):
+    """获取4维数据的汇总统计信息"""
+    try:
+        start_time = asyncio.get_event_loop().time()
+        df = pd.DataFrame([h.dict() for h in request.hazards])
+        
+        analyzer = FourDimensionalPivotTable(df)
+        summary = analyzer.get_summary_statistics()
+        
+        processing_time = asyncio.get_event_loop().time() - start_time
+        
+        return {
+            "success": True,
+            "data": summary,
+            "processingTime": processing_time,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"4D summary error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== 结束 4维数据透视表API ====================
 
 if __name__ == "__main__":
     import uvicorn

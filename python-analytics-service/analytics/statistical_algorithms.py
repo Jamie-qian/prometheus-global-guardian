@@ -208,8 +208,12 @@ class StatisticalAnalyzer:
         if 'timestamp' in df.columns:
             df_temp = df.copy()
             df_temp['date'] = pd.to_datetime(df_temp['timestamp']).dt.date
-            time_dimension = df_temp.groupby('date')['type'].value_counts().to_dict()
-            pivot_analysis['timeDimension'] = {str(k): v for k, v in time_dimension.items()}
+            time_groups = df_temp.groupby(['date', 'type']).size()
+            time_dimension = {}
+            for (date, hazard_type), count in time_groups.items():
+                key = f"{str(date)}_{hazard_type}"
+                time_dimension[key] = int(count)
+            pivot_analysis['timeDimension'] = time_dimension
         
         # 维度2: 地理 - 按坐标区域分组（简化为经纬度区间）
         if 'coordinates' in df.columns:
@@ -218,21 +222,29 @@ class StatisticalAnalyzer:
             df_temp['geo_region'] = df_temp['coordinates'].apply(
                 lambda x: f"({int(x[0]//10)*10},{int(x[1]//10)*10})" if isinstance(x, list) and len(x) >= 2 else "unknown"
             )
-            geo_dimension = df_temp.groupby('geo_region')['type'].value_counts().to_dict()
-            pivot_analysis['geoDimension'] = {str(k): v for k, v in geo_dimension.items()}
+            geo_groups = df_temp.groupby(['geo_region', 'type']).size()
+            geo_dimension = {}
+            for (region, hazard_type), count in geo_groups.items():
+                key = f"{region}_{hazard_type}"
+                geo_dimension[key] = int(count)
+            pivot_analysis['geoDimension'] = geo_dimension
         
         # 维度3: 类型 - 基础统计
         pivot_analysis['typeDimension'] = type_counts
         
         # 维度4: 严重性 - 按severity分组
         if 'severity' in df.columns:
-            severity_dimension = df.groupby('severity')['type'].value_counts().to_dict()
-            pivot_analysis['severityDimension'] = {str(k): v for k, v in severity_dimension.items()}
+            severity_groups = df.groupby(['severity', 'type']).size()
+            severity_dimension = {}
+            for (severity, hazard_type), count in severity_groups.items():
+                key = f"{severity}_{hazard_type}"
+                severity_dimension[key] = int(count)
+            pivot_analysis['severityDimension'] = severity_dimension
         
         # 多维交叉分析
         if 'severity' in df.columns:
             cross_analysis = df.groupby(['type', 'severity']).size().to_dict()
-            pivot_analysis['crossAnalysis'] = {f"{k[0]}_×_{k[1]}": v for k, v in cross_analysis.items()}
+            pivot_analysis['crossAnalysis'] = {f"{k[0]}_×_{k[1]}": int(v) for k, v in cross_analysis.items()}
         
         results["typeDistribution"] = {
             "counts": type_counts,
